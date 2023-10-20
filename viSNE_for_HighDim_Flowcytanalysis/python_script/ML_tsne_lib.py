@@ -8,7 +8,7 @@ import random as rd
 import os
 from sklearn.model_selection import train_test_split
 from sklearn.manifold import TSNE
-rd.seed(90)
+rd.seed(100)
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 import ipywidgets as widgets
@@ -112,30 +112,29 @@ def subsample_from_list_of_df(list_of_dataframes, subsampling_number=300, random
 
     Returns:
     - Concatenated DataFrame containing the subsampled rows.
+
+    Example:
+    #subsampling_df = subsample_from_list_of_df(labeld_dfs,subsampling_number=2000)
+    #subsampling_df_fcs_transformed = subsample_from_list_of_df(fcs_files,subsampling_number=3000,random_seed=42)
     """
     # Set random seed for reproducibility
     if random_seed is not None:
         np.random.seed(random_seed)
     
-    # Initialize an empty list to store the subsampled DataFrames
     subsampled_dfs = []
     
     for df in list_of_dataframes:
-        # Check if the subsampling number is greater than the number of rows in the DataFrame
         if subsampling_number >= len(df):
-            subsampled_dfs.append(df)  # Append the entire DataFrame
+            subsampled_dfs.append(df)  
         else:
-            # Randomly sample 'subsampling_number' rows without replacement
             subsampled_df = df.sample(n=subsampling_number, replace=False)
             subsampled_dfs.append(subsampled_df)
     
-    # Concatenate the subsampled DataFrames into one DataFrame
     concatenated_df = pd.concat(subsampled_dfs, ignore_index=True)
     
     return concatenated_df
 
-#subsampling_df = subsample_from_list_of_df(labeld_dfs,subsampling_number=2000)
-subsampling_df_fcs_transformed = subsample_from_list_of_df(fcs_files,subsampling_number=3000,random_seed=42)
+
 
 # %%
 def asinh_transform(subsampling_df, factor=150):
@@ -162,15 +161,7 @@ def asinh_transform(subsampling_df, factor=150):
 
     return transformed_df
 
-transformed_dataframes_data = asinh_transform(subsampling_df_fcs_transformed, factor=150)
 
-# %%
-# create tSNE map and contatenate dataframe with labels
-
-
-# %%
-
-tsne_result = TSNE(n_components=2, perplexity=50, verbose=True).fit_transform(transformed_dataframes)
 
 # %%
 def get_distinct_colors(n):
@@ -232,8 +223,6 @@ def plot_vsne_result_generic(tsne_result, label_col):
     plt.show()
 
 
-plot_vsne_result_generic(tsne_result,label_col=None)
-
 # %%
 # create interactive plot to change coloring scheme with a dropdown menu 
 def create_visne_with_dropdown(tsne_result,subsampling_df):
@@ -274,9 +263,6 @@ def create_visne_with_dropdown(tsne_result,subsampling_df):
         return interactive_plot
     
     # Display the interactive widget
-
-create_visne_with_dropdown(tsne_result,transformed_dataframes)
-
 # %%
 # automatic clustering 
 
@@ -353,9 +339,7 @@ def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2):
 
 
 # %%
-dir_data= r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\fcm_field_data\Extracted_Data"
 
-# load csv only ending with e 
 def load_csv_with_ending(dir_data,ending="_e"):
     """
     Loads csv files with a certain ending 
@@ -367,7 +351,10 @@ def load_csv_with_ending(dir_data,ending="_e"):
     Returns:
     - dataframe from the direcotry 
     
-    
+    Example:
+    input_df = load_csv_with_ending(dir_data)
+    subsampling_input_df= subsample_from_list_of_df(input_df,1000,42)
+    input_df_transformed= asinh_transform(subsampling_input_df,factor=150)
     """
     input_df = []
     for filename in os.listdir(dir_data):
@@ -381,9 +368,6 @@ def load_csv_with_ending(dir_data,ending="_e"):
             input_df.append(df)
     return input_df
 
-input_df = load_csv_with_ending(dir_data)
-subsampling_input_df= subsample_from_list_of_df(input_df,1000,42)
-input_df_transformed= asinh_transform(subsampling_input_df,factor=150)
 
 # %%
 def rename_columns(input_df, column_mapping):
@@ -424,36 +408,34 @@ column_mapping = {
 
 }
 
-# Call the function to rename the columns
-subsampling_df_fcs_transformed = asinh_transform(subsampling_df_fcs_transformed)
-subsampling_df_fcs_transformed = rename_columns(subsampling_df_fcs_transformed, column_mapping)
-
-# %%
+# # %%
 
 
-ML_labels = rf_class.predict(subsampling_df_fcs_transformed)
+# ML_labels = rf_class.predict(subsampling_df_fcs_transformed)
 
-subsampling_df_fcs_transformed["ML_Labels"]= ML_labels
+# subsampling_df_fcs_transformed["ML_Labels"]= ML_labels
 
-# %%
-# create viSNE map with dropdown for all cols, hdbscan analysis, ML labeling
+# # %%
+# # create viSNE map with dropdown for all cols, hdbscan analysis, ML labeling
 
-tsne_result_input = TSNE(n_components=2, perplexity=30, verbose=True,method="barnes_hut").fit_transform(subsampling_df_fcs_transformed.iloc[:,:-1])
+# tsne_result_input = TSNE(n_components=2, perplexity=30, verbose=True,method="barnes_hut").fit_transform(subsampling_df_fcs_transformed.iloc[:,:-1])
 
-# %%
-plot_vsne_result_generic(tsne_result_input,label_col=subsampling_df_fcs_transformed["ML_Labels"])
+# # %%
+# plot_vsne_result_generic(tsne_result_input,label_col=subsampling_df_fcs_transformed["ML_Labels"])
 
-# %%
-i_plot = create_visne_with_dropdown(tsne_result_input,input_matrix)
-display(i_plot)
+# # %%
+# i_plot = create_visne_with_dropdown(tsne_result_input,input_matrix)
+# display(i_plot)
 
-# %%
+# # %%
 
 
 # %%
 
+def create_barplot_from_ML():
+    return
 
-# %%
+
 
 
 
