@@ -95,8 +95,7 @@ def load_fcs_from_dir(directory_path):
                 print(f"An error occurred while processing {file}: {e}")
     return fcs_files
 
-direct = r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\fcm_field_data"
-fcs_files = load_fcs_from_dir(direct)
+
 
 # %%
 # write subsampling function
@@ -137,7 +136,7 @@ def subsample_from_list_of_df(list_of_dataframes, subsampling_number=300, random
 
 
 # %%
-def asinh_transform(subsampling_df, factor=150):
+def asinh_transform(subsampling_df, factor=150,min_max_trans = True):
     """
     Apllies the asinh transformation on each column in one dataframe, also apllies a min max normalization
 
@@ -155,9 +154,10 @@ def asinh_transform(subsampling_df, factor=150):
             transformed_df[col_name] = np.arcsinh(col / factor)
 
             # Min-max normalization
-            col_min = transformed_df[col_name].min()
-            col_max = transformed_df[col_name].max()
-            transformed_df[col_name] = (transformed_df[col_name] - col_min) / (col_max - col_min)
+            if min_max_trans is True:
+                col_min = transformed_df[col_name].min()
+                col_max = transformed_df[col_name].max()
+                transformed_df[col_name] = (transformed_df[col_name] - col_min) / (col_max - col_min)
 
     return transformed_df
 
@@ -276,7 +276,7 @@ def cluster_tsne_map(tsne_result,m=30,s=5):
     - s: value minimal cluster
 
 
-    Retruns:
+    Returns:
     - ()
     
     
@@ -434,6 +434,23 @@ column_mapping = {
 
 def create_barplot_from_ML():
     return
+
+
+
+# %%
+
+def generate_unique_ML_values_from_labels(normalized_matrix_with_labels,max_t=1):
+
+    unique_labels = pd.unique(normalized_matrix_with_labels.iloc("Labels"))
+
+    values_for_tsne = np.linspace(0,1,len(unique_labels))
+
+    for i,each_entry in enumerate(normalized_matrix_with_labels):
+        if each_entry["Labels"] is unique_labels[i]:
+            normalized_matrix_with_labels.iloc["tsne_labels"] = values_for_tsne[i]
+
+
+    return normalized_matrix_with_labels
 
 
 
