@@ -66,11 +66,9 @@ def label_data_according_to_definitions(csv_path,definitions_dict= None):
     return labeled_dfs
 
 
-# label data 
-labeld_dfs = label_data_according_to_definitions(csv_path)
 
 # %%
-def load_fcs_from_dir(directory_path):
+def load_fcs_from_dir(directory_path,label_data_frames=False):
     """ 
     Loads in the events in the matrix from the given directory
 
@@ -90,6 +88,8 @@ def load_fcs_from_dir(directory_path):
                 fcs_data_df = fcs_data.as_dataframe(source="orig")
                 fcs_data_df = fcs_data_df[[col for col in fcs_data_df.columns if col[0].endswith('-A')]]
                 fcs_data_df.columns = fcs_data_df.columns.droplevel(0)
+                if label_data_frames is True:
+                    fcs_data_df["Label"] = file
                 fcs_files.append(fcs_data_df)
             except Exception as e:
                 print(f"An error occurred while processing {file}: {e}")
@@ -314,7 +314,8 @@ def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2):
     combined_df = pd.concat(labeld_dfs,ignore_index=True)
     combined_df_trans = asinh_transform(combined_df)
     combined_df_rand= combined_df_trans.sample(frac=1,random_state=random_state).reset_index(drop=True)
-    train_df, test_df = train_test_split(combined_df_rand,test_size,random_state=42)
+    
+    train_df, test_df = train_test_split(combined_df_rand,test_size=test_size,random_state=42)
     X_train = train_df.drop("Label",axis=1)
     y_train = train_df["Label"]
 
@@ -363,7 +364,7 @@ def load_csv_with_ending(dir_data,ending="_e"):
             df = pd.read_csv(file_path)
             
             # Add a new column 'filename' with the current filename
-            df['filename'] = filename
+            df['Label'] = filename
             
             input_df.append(df)
     return input_df
