@@ -41,10 +41,19 @@ transformed_fcs_data = MLtsne.rename_columns(transformed_fcs_data,column_mapping
 Labels = rf_class.predict(transformed_fcs_data)
 transformed_fcs_data["Label"] = Labels
 
+#%%
 
-# tnse_result = TSNE(perplexity=30,verbose=True).fit_transform(transformed_fcs_data)
+print(transformed_fcs_data)
 
-# MLtsne.create_visne_with_dropdown(tsne_result=tnse_result,subsampling_df=transformed_fcs_data)
+normalized_matrix_with_labels, label_value_dict = MLtsne.generate_unique_ML_values_from_labels(transformed_fcs_data,max_t=0.5)
+input_matrix_for_tsne = normalized_matrix_with_labels.drop("Label",axis=1)
+tnse_result = TSNE(perplexity=30,verbose=True).fit_transform(input_matrix_for_tsne)
+
+MLtsne.create_visne_with_dropdown(tsne_result=tnse_result,subsampling_df=normalized_matrix_with_labels)
 
 
+# %%
+feature_names = fcs_data_for_ML[0].columns
+feature_names = feature_names[:-1]
+MLtsne.get_feature_importance(rf_class,feature_names)
 # %%

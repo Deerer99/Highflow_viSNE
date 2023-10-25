@@ -323,7 +323,7 @@ def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2):
     y_test = test_df["Label"]
 
 
-    rf_class= RandomForestClassifier(n_estimators=200, random_state=42)
+    rf_class= RandomForestClassifier(n_estimators=200, random_state=42,verbose=True)
 
     rf_class.fit(X_train,y_train)
 
@@ -440,20 +440,48 @@ def create_barplot_from_ML():
 
 # %%
 
-def generate_unique_ML_values_from_labels(normalized_matrix_with_labels,max_t=1):
+def generate_unique_ML_values_from_labels(normalized_matrix_with_labels, max_t=1):
+    unique_labels = pd.unique(normalized_matrix_with_labels["Label"])
+    values_for_tsne = np.linspace(0, max_t, len(unique_labels))
+    label_value_dict = {}
 
-    unique_labels = pd.unique(normalized_matrix_with_labels.iloc("Labels"))
+    for i, each_entry in normalized_matrix_with_labels.iterrows():
+        label = each_entry["Label"]
+        if label in unique_labels:
+            normalized_matrix_with_labels.at[i, "tsne_labels"] = values_for_tsne[np.where(unique_labels == label)[0][0]]
+            label_value_dict[label] = values_for_tsne[np.where(unique_labels == label)[0][0]]
 
-    values_for_tsne = np.linspace(0,1,len(unique_labels))
-
-    for i,each_entry in enumerate(normalized_matrix_with_labels):
-        if each_entry["Labels"] is unique_labels[i]:
-            normalized_matrix_with_labels.iloc["tsne_labels"] = values_for_tsne[i]
-
-
-    return normalized_matrix_with_labels
-
-
+    return normalized_matrix_with_labels, label_value_dict
 
 
 
+# %%
+
+def get_feature_importance(clf=None,feature_names=None):
+    # Initialize the RandomForestClassifier
+    
+
+    # Fit the model on the entire dataset
+
+    # Get feature importances
+    importances = clf.feature_importances_
+
+    # Create a DataFrame for better visualization
+    feature_importances = pd.DataFrame(importances, index=feature_names, columns=['importance'])
+
+    # Sort the values in descending order
+    feature_importances = feature_importances.sort_values(by='importance', ascending=False)
+
+    # Print the feature importances
+    print(feature_importances)
+
+    # Create a bar plot to visualize feature importances
+    plt.figure(figsize=(10, 6))
+    plt.bar(feature_importances.index, feature_importances['importance'])
+    plt.xticks(rotation=90)
+    plt.xlabel('Features')
+    plt.ylabel('Importance')
+    plt.title('Feature Importances')
+    plt.show()
+
+    return feature_importances
