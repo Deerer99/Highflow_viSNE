@@ -19,6 +19,8 @@ import bokeh
 from bokeh.plotting import show
 import matplotlib.colors as mcolors
 import hdbscan
+from keras import Sequential
+from keras.layers import Dense
 
 # %%
 # import data for viSNE
@@ -313,6 +315,7 @@ def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2):
     
     
     """
+
     combined_df = pd.concat(labeld_dfs,ignore_index=True)
     combined_df_trans = asinh_transform(combined_df)
     combined_df_rand= combined_df_trans.sample(frac=1,random_state=random_state).reset_index(drop=True)
@@ -535,3 +538,25 @@ def get_feature_importance(clf=None,feature_names=None):
     plt.show()
 
     return feature_importances
+
+
+
+def create_deepL_classefier(X_matrix, y_pred):
+
+
+    # include data split
+
+    model = Sequential()
+    model.add(Dense(10,input_dim=12,activation="relu"))
+    model.add(Dense(8,activation="relu"))
+    model.add(Dense(1,activation="sigmoid"))
+    model.compile(loss="binary_crossentropy",optimizer="adam",metrics=["accuracy"])
+    model.fit(X_matrix,y_pred,epochs=50,batch_size=32)
+
+    loss,accuracy = model.evaluate(X_test,y_test)
+
+
+
+
+
+    return model
