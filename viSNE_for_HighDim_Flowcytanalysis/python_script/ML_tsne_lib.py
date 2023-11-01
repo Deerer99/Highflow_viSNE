@@ -233,6 +233,8 @@ def create_visne_with_dropdown(tsne_result,subsampling_df):
         - tsne_result: Coordidnates in the viSNE Map created from subsampling_df
         - subsampling_df: a df of subsampled accordingly from original dataframes
         
+        Returns:
+        - interactive plot object 
         
         """
         data = {
@@ -433,14 +435,47 @@ column_mapping = {
 
 # %%
 
-def create_barplot_from_ML():
-    return
+def create_barplot_from_ML(Labels):
+
+    """
+    Function generate barplot per filename which represents the different label amounts in order to compare the results
+    
+
+    Parameters:
+    - Labels : Label col defined through the ML Model 
+    - filename_col : filname column
+
+    """
+
+    count_label = []
+    unique_label = pd.unique(Labels)
+    for i,each_label in enumerate(Labels):
+        if each_label == unique_label:
+            count_label =+ 1
+
+    # shoud iterate over labels and add count if 
+
+    
+    return count_label
 
 
 
 # %%
 
 def generate_unique_ML_values_from_labels(normalized_matrix_with_labels, max_t=1):
+
+    """
+    Generates numerical values for labels in order to include them in numerical operations
+
+    Parameters:
+    - normalized_matrix_with_labels : normalized (to 1) matrix of feature values
+    - max_t : maximum value to give for values
+
+    Returns:
+    - normalized_matrix_with_labels : same matrix with label cols and value col
+    - label value dict : mapping for values and labels
+    
+    """
     unique_labels = pd.unique(normalized_matrix_with_labels["Label"])
     values_for_tsne = np.linspace(0, max_t, len(unique_labels))
     label_value_dict = {}
@@ -458,6 +493,21 @@ def generate_unique_ML_values_from_labels(normalized_matrix_with_labels, max_t=1
 # %%
 
 def get_feature_importance(clf=None,feature_names=None):
+
+    """
+    Gets the feature importance for a trained classifier, feature names can be adjusted
+    Also creates a barplot to evaluate 
+
+    Parameters:
+    - clf : ML classifier
+    - feature names : names of the features
+
+    Returns:
+    - feature importances 
+    
+    
+    
+    """
     # Initialize the RandomForestClassifier
     
 
