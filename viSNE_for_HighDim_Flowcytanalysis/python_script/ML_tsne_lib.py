@@ -21,6 +21,7 @@ import matplotlib.colors as mcolors
 import hdbscan
 from keras import Sequential
 from keras.layers import Dense
+from collections import Counter
 
 # %%
 # import data for viSNE
@@ -91,7 +92,7 @@ def load_fcs_from_dir(directory_path,label_data_frames=False):
                 fcs_data_df = fcs_data_df[[col for col in fcs_data_df.columns if col[0].endswith('-A')]]
                 fcs_data_df.columns = fcs_data_df.columns.droplevel(0)
                 if label_data_frames is True:
-                    fcs_data_df["Label"] = file
+                    fcs_data_df["filename"] = file
                 fcs_files.append(fcs_data_df)
             except Exception as e:
                 print(f"An error occurred while processing {file}: {e}")
@@ -151,7 +152,7 @@ def asinh_transform(subsampling_df, factor=150,min_max_trans = True):
     """
     transformed_df = subsampling_df.copy()  # Create a copy to store the transformed data
     for col_name in subsampling_df.columns:
-        if col_name != 'Label' and pd.api.types.is_numeric_dtype(subsampling_df[col_name]):
+        if col_name != 'filename' and pd.api.types.is_numeric_dtype(subsampling_df[col_name]):
             col = subsampling_df[col_name]
             transformed_df[col_name] = np.arcsinh(col / factor)
 
@@ -438,11 +439,9 @@ column_mapping = {
 
 # %%
 
-def create_barplot_from_ML(Labels):
-
+def create_stacked_barplot_from_ML(Matrix_with_Label_filename, triplicates=True):
     """
-    Function generate barplot per filename which represents the different label amounts in order to compare the results
-    
+    Function generate stacked barplot per filename which represents the different label amounts in order to compare the results
 
     Parameters:
     - Labels : Label col defined through the ML Model 
@@ -450,17 +449,34 @@ def create_barplot_from_ML(Labels):
 
     """
 
-    count_label = []
-    unique_label = pd.unique(Labels)
-    for i,each_label in enumerate(Labels):
-        if each_label == unique_label:
-            count_label =+ 1
+    Label = Matrix_with_Label_filename["Label"]
 
-    # shoud iterate over labels and add count if 
+    # count the labels in each filename 
 
-    
-    return count_label
+    counts = Counter(Label)
+    percentages = {key: value/len(Matrix_with_Label_filename) for key, value in counts.items()}
+    labels = list(percentages .keys())
+    percent = list(percentages .values())
 
+    # Create a figure and a set of subplots
+    fig, ax = plt.subplots()
+
+    # Plotting the stacked bar plot
+    ax.bar(0, percent[0], color='r', label=labels[0])
+    bottom = percent[0]
+    for i in range(1, len(percent)):
+        ax.bar(0, percent[i], bottom=bottom, color=np.random.rand(3,), label=labels[i])
+        bottom += percent[i]
+
+    # Adding labels and title
+    ax.set_ylabel('Percentage')
+    ax.set_title('Dynamic Stacked Bar Plot')
+    ax.legend()
+
+
+
+
+    plt.show()
 
 
 # %%
@@ -560,3 +576,35 @@ def create_deepL_classefier(X_matrix, y_pred):
 
 
     return model
+
+
+def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save,definitions_dict):
+
+
+    #load fcs files
+    fcs_data=load_fcs_from_dir(directory_path=dir_evaluate,label_data_frames=True)
+    #transform
+    Label_filename_dict = {}
+    for frame in fcs_data:
+
+        filename =  np.unique(frame["filename"])    
+        transform_frame = asinh_transform(frame)
+        Labels = classifier.predict(transform_frame)
+        unique_labels, label_count = np.unique(Labels,return_counts=True)
+
+        for label, count in zip(unique_labels,label_count):
+            print(f"Label {label} apears {count} times in file: {filename}")
+            Label_filename_dict.update({filename:[unique_labels,label_count]})
+
+    
+            
+
+
+    # create barplot for triplicates
+
+
+    # create viSNE from triplicates
+
+    # saves barplot and visne map with labels in dir 
+
+    return
