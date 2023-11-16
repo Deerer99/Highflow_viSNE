@@ -68,7 +68,13 @@ def label_data_according_to_definitions(csv_path,definitions_dict= None):
 
     return labeled_dfs
 
+def remove_overflow(fcs_df):
 
+    value_to_remove = 1048575.0
+    fcs_df = fcs_df[0]
+    mask = ~fcs_df.isin([value_to_remove]).any(axis=1)
+    df= fcs_df[mask]
+    return df 
 
 # %%
 def load_fcs_from_dir(directory_path,label_data_frames=False):
@@ -89,6 +95,7 @@ def load_fcs_from_dir(directory_path,label_data_frames=False):
             try:
                 fcs_data = fk.Sample(file_path,cache_original_events=True)
                 fcs_data_df = fcs_data.as_dataframe(source="orig")
+                fcs_data_df = remove_overflow(fcs_data_df)
                 fcs_data_df = fcs_data_df[[col for col in fcs_data_df.columns if col[0].endswith('-A')]]
                 fcs_data_df.columns = fcs_data_df.columns.droplevel(0)
                 if label_data_frames is True:
@@ -96,7 +103,7 @@ def load_fcs_from_dir(directory_path,label_data_frames=False):
                 fcs_files.append(fcs_data_df)
             except Exception as e:
                 print(f"An error occurred while processing {file}: {e}")
-    return fcs_files
+    return fcs_files,fcs_data
 
 
 
@@ -439,44 +446,38 @@ column_mapping = {
 
 # %%
 
-def create_stacked_barplot_from_ML(Matrix_with_Label_filename, triplicates=True):
-    """
-    Function generate stacked barplot per filename which represents the different label amounts in order to compare the results
-
-    Parameters:
-    - Labels : Label col defined through the ML Model 
-    - filename_col : filname column
-
-    """
-
-    Label = Matrix_with_Label_filename["Label"]
-
-    # count the labels in each filename 
-
-    counts = Counter(Label)
-    percentages = {key: value/len(Matrix_with_Label_filename) for key, value in counts.items()}
-    labels = list(percentages .keys())
-    percent = list(percentages .values())
-
-    # Create a figure and a set of subplots
-    fig, ax = plt.subplots()
-
-    # Plotting the stacked bar plot
-    ax.bar(0, percent[0], color='r', label=labels[0])
-    bottom = percent[0]
-    for i in range(1, len(percent)):
-        ax.bar(0, percent[i], bottom=bottom, color=np.random.rand(3,), label=labels[i])
-        bottom += percent[i]
-
-    # Adding labels and title
-    ax.set_ylabel('Percentage')
-    ax.set_title('Dynamic Stacked Bar Plot')
-    ax.legend()
+def create_stacked_barplot_from_ML(df, triplicates=True):
+   
+    filenames = list(np.concatenate(list(df['filename'])))
+    unique_labels = df['unique_labels'][1]
+    label_count = list(df['label_count'])
+    colors = plt.cm.Paired(range(len(unique_labels[0])))
+    # x positions
+    fig,ax = plt.subplots()
+    percentage_label_count = [[count_i / sum(count) * 100 for count_i in count] for count in label_count]
+    bottom = np.zeros(len(filenames))
+    
+    for i,label in enumerate(unique_labels):
+    
+        position_i_values = [inner_list[i] for inner_list in percentage_label_count]
+        print(position_i_values)
+        ax.bar(filenames, position_i_values, color=colors[i],bottom=bottom,label=label)
+        bottom = [sum(x) for x in zip(bottom, position_i_values)]
 
 
 
 
+    ax.set_xlabel('Filename')
+    ax.set_ylabel('Percentage of Unique Label Occurrences')
+    ax.set_title('Stacked Barplot of Label Occurrences')
+    ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
+
+
+    plt.xticks(rotation=45, ha='right')
+        
     plt.show()
+
+
 
 
 # %%
@@ -557,7 +558,7 @@ def get_feature_importance(clf=None,feature_names=None):
 
 
 
-def create_deepL_classefier(X_matrix, y_pred):
+def create_deepL_classifier(X_matrix, y_pred):
 
 
     # include data split
@@ -583,18 +584,18 @@ def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save,definitions
 
     #load fcs files
     fcs_data=load_fcs_from_dir(directory_path=dir_evaluate,label_data_frames=True)
-    #transform
-    Label_filename_dict = {}
+    Label_filename_df = pd.DataFrame(columns=['filename', 'unique_labels', 'label_count'])
+
     for frame in fcs_data:
-
-        filename =  np.unique(frame["filename"])    
+        filename = np.unique(frame["filename"])    
         transform_frame = asinh_transform(frame)
-        Labels = classifier.predict(transform_frame)
-        unique_labels, label_count = np.unique(Labels,return_counts=True)
-
-        for label, count in zip(unique_labels,label_count):
-            print(f"Label {label} apears {count} times in file: {filename}")
-            Label_filename_dict.update({filename:[unique_labels,label_count]})
+        Labels = classifier.predict(transform_frame.iloc[:,:-1])
+        unique_labels, label_count = np.unique(Labels, return_counts=True)
+        
+  
+        new_row = {'filename': filename, 'unique_labels': unique_labels, 'label_count': label_count}
+        frame["Labels"]=Labels
+        Label_filename_df = Label_filename_df.append(new_row, ignore_index=True)
 
     
             
@@ -607,4 +608,4 @@ def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save,definitions
 
     # saves barplot and visne map with labels in dir 
 
-    return
+    return Label_filename_df

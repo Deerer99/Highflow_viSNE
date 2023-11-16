@@ -48,3 +48,5 @@ fcs_data_input_tsne["filenames"] = filename
 MLtsne.create_visne_with_dropdown(tsne_result=tnse_result,subsampling_df=fcs_data_input_tsne)
 
 MLtsne.create_stacked_barplot_from_ML(fcs_data_input_tsne)
+
+df= MLtsne.evaluate_dir_with_ML_classifier(dir_path_test_data)
