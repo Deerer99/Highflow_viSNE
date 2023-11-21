@@ -1,0 +1,12 @@
+import ML_tsne_lib  as MLtsne
+import pandas as pd
+from sklearn.manifold import TSNE
+import numpy as np
+
+dir_path = r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\ML_Model_TOTAL"
+
+labeld_dfs_list = MLtsne.load_data_from_structured_directory(dir_path)
+
+rf_class =MLtsne.develop_ML_model_RF(labeld_dfs_list)
+
+

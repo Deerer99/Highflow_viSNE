@@ -7,21 +7,20 @@ import matplotlib.pyplot as plt
 import random as rd
 import os
 from sklearn.model_selection import train_test_split
-from sklearn.manifold import TSNE
 rd.seed(100)
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 import ipywidgets as widgets
-from IPython.display import display
+
 from matplotlib.cm import get_cmap
 import flowkit as fk
-import bokeh
-from bokeh.plotting import show
+
+
 import matplotlib.colors as mcolors
 import hdbscan
 from keras import Sequential
 from keras.layers import Dense
-from collections import Counter
+
 
 # %%
 # import data for viSNE
@@ -38,6 +37,35 @@ definitions_dict = {
         "Q12":9
 
     }
+
+def load_data_from_structured_directory(rootdir):
+
+
+    list_of_labeld_df = []
+    # loop through the direcotry
+    for subdir, dirs, f in os.walk(rootdir):
+        for each_dir in dirs:
+        # check the files inside if csv or fcs ending 
+            files = os.listdir(os.path.join(subdir,each_dir))
+                               
+            if files[0].endswith(".csv"):
+                labeld_df = label_data_according_to_definitions(os.path.join(subdir,each_dir))
+                for i, df in enumerate(labeld_df):
+                    df['filename'] = each_dir
+                list_of_labeld_df.append(labeld_df)
+            elif files[0].endswith(".fcs"):
+                labeld_df = load_fcs_from_dir(os.path.join(subdir,each_dir))
+                for i, df in enumerate(labeld_df):
+                    df['filename'] = each_dir
+                list_of_labeld_df.append(labeld_df)
+        
+    concatenated_list = []
+    for sublist in list_of_labeld_df:
+        concatenated_list.extend(sublist)
+                
+
+    return concatenated_list
+
 
 def label_data_according_to_definitions(csv_path,definitions_dict= None):
     """
@@ -59,11 +87,11 @@ def label_data_according_to_definitions(csv_path,definitions_dict= None):
             if definitions_dict is not None:
                 for key, label in definitions_dict.items():
                     if key in filename:
-                        df['Label'] = label  # Add a new column 'Label' with the corresponding label
+                        df['filename'] = label  # Add a new column 'Label' with the corresponding label
                         labeled_dfs.append(df)
                         break  # No need to check other keys once a match is found
             elif definitions_dict is None:
-                df['Label']= filename
+                df['filename']= filename
                 labeled_dfs.append(df)
 
     return labeled_dfs
@@ -71,7 +99,6 @@ def label_data_according_to_definitions(csv_path,definitions_dict= None):
 def remove_overflow(fcs_df):
 
     value_to_remove = 1048575.0
-    fcs_df = fcs_df[0]
     mask = ~fcs_df.isin([value_to_remove]).any(axis=1)
     df= fcs_df[mask]
     return df 
@@ -103,7 +130,7 @@ def load_fcs_from_dir(directory_path,label_data_frames=False):
                 fcs_files.append(fcs_data_df)
             except Exception as e:
                 print(f"An error occurred while processing {file}: {e}")
-    return fcs_files,fcs_data
+    return fcs_files
 
 
 
@@ -329,14 +356,14 @@ def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2):
     combined_df_rand= combined_df_trans.sample(frac=1,random_state=random_state).reset_index(drop=True)
     
     train_df, test_df = train_test_split(combined_df_rand,test_size=test_size,random_state=42)
-    X_train = train_df.drop("Label",axis=1)
-    y_train = train_df["Label"]
+    X_train = train_df.drop("filename",axis=1)
+    y_train = train_df["filename"]
 
-    X_test = test_df.drop("Label", axis=1)
-    y_test = test_df["Label"]
+    X_test = test_df.drop("filename", axis=1)
+    y_test = test_df["filename"]
 
 
-    rf_class= RandomForestClassifier(n_estimators=200, random_state=42,verbose=True)
+    rf_class= RandomForestClassifier(n_estimators=200,max_depth=50,random_state=42,verbose=True)
 
     rf_class.fit(X_train,y_train)
 
