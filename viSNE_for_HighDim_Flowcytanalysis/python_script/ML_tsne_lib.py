@@ -11,11 +11,9 @@ rd.seed(100)
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 import ipywidgets as widgets
-
 from matplotlib.cm import get_cmap
 import flowkit as fk
-
-
+from scipy.stats import t
 import matplotlib.colors as mcolors
 import hdbscan
 from keras import Sequential
@@ -39,7 +37,20 @@ definitions_dict = {
     }
 
 def load_data_from_structured_directory(rootdir):
+    """
+    Function to load data out of structured directories where the structure represents the measurements of each instance for which the label shoud be represented
+    The label column is going to be determined from the name of the direcory in the root dir. Purpose is to label data according to dir names and prepare it for ML application
 
+    Parameters:
+    - rootdir: dir in which the structured data resides
+
+    returns:
+    - concatenated_list: each instance in each dir is contatenated and put into a overarching list which represents each directory
+    
+    
+    
+    
+    """
 
     list_of_labeld_df = []
     # loop through the direcotry
@@ -363,7 +374,7 @@ def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2):
     y_test = test_df["filename"]
 
 
-    rf_class= RandomForestClassifier(n_estimators=200,max_depth=50,random_state=42,verbose=True)
+    rf_class= RandomForestClassifier(n_estimators=100,max_depth=50,random_state=42,verbose=True)
 
     rf_class.fit(X_train,y_train)
 
@@ -555,24 +566,18 @@ def get_feature_importance(clf=None,feature_names=None):
     
     
     """
-    # Initialize the RandomForestClassifier
-    
-
-    # Fit the model on the entire dataset
-
-    # Get feature importances
     importances = clf.feature_importances_
 
-    # Create a DataFrame for better visualization
+    
     feature_importances = pd.DataFrame(importances, index=feature_names, columns=['importance'])
 
-    # Sort the values in descending order
+    
     feature_importances = feature_importances.sort_values(by='importance', ascending=False)
 
-    # Print the feature importances
+    
     print(feature_importances)
 
-    # Create a bar plot to visualize feature importances
+   
     plt.figure(figsize=(10, 6))
     plt.bar(feature_importances.index, feature_importances['importance'])
     plt.xticks(rotation=90)
@@ -587,8 +592,10 @@ def get_feature_importance(clf=None,feature_names=None):
 
 def create_deepL_classifier(X_matrix, y_pred):
 
-
-    # include data split
+    """
+    Test function for future application if ML Model does not suffice
+    
+    """
 
     model = Sequential()
     model.add(Dense(10,input_dim=12,activation="relu"))
@@ -608,31 +615,71 @@ def create_deepL_classifier(X_matrix, y_pred):
 
 def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save,definitions_dict):
 
+    """
+    Combination function to evaluate a set of data in a directory.
 
+    Parameters:
+    - 
+
+
+
+    Returns:
+    - Label_filename_df: Returns a df which includes the name of a file, the labels and the associated counts
+    
+    
+    """
     #load fcs files
     fcs_data=load_fcs_from_dir(directory_path=dir_evaluate,label_data_frames=True)
-    Label_filename_df = pd.DataFrame(columns=['filename', 'unique_labels', 'label_count'])
-
-    for frame in fcs_data:
-        filename = np.unique(frame["filename"])    
-        transform_frame = asinh_transform(frame)
-        Labels = classifier.predict(transform_frame.iloc[:,:-1])
-        unique_labels, label_count = np.unique(Labels, return_counts=True)
-        
-  
-        new_row = {'filename': filename, 'unique_labels': unique_labels, 'label_count': label_count}
-        frame["Labels"]=Labels
-        Label_filename_df = Label_filename_df.append(new_row, ignore_index=True)
-
+    Label_filename_df = pd.DataFrame()
     
+    for i in range(0,len(fcs_data),3):
+
+        calculating_df = pd.DataFrame()
+        for frame in fcs_data[i:i+3]:
+            new_row = pd.DataFrame()
+            transform_frame = asinh_transform(frame)
+            Labels = classifier.predict(transform_frame.iloc[:,:-1])
+            unique_labels, label_count = np.unique(Labels, return_counts=True)   
+            for label, count in zip(unique_labels, label_count):
+                new_row[label] =count
+
+                
+            calculating_df = calculating_df.append(new_row, ignore_index=True)
+
+
+        Mean = np.mean(calculating_df).T
+        std = np.std(calculating_df,ddof=1) 
+        confidence_interval = t.interval(0.95, 2, Mean, std / np.sqrt(2))
+        new_row2= pd.DataFrame()
+        filename = np.unique(frame["filename"])
+        new_row2["filename"]=filename
+
+        for each_label,each_mean,each_cf in zip(unique_labels,Mean,confidence_interval):
+            new_row2[each_label]= [None]
+            new_row2[each_label] = each_mean
+            new_row2[each_label + "cf_0.95_lower"] = each_cf[0]
+            new_row2[each_label + "cf_0.95_upper"] = each_cf[1]
+        
+
+        Label_filename_df.append(new_row2, ignore_index=True)
+
+    Label_filename_df.fillna(value=0,axis=0)
+        
+             
+
+    return Label_filename_df, frame 
+
+
+# def ML_statistic():
+#      for label in unique_labels:
+#             # Create a DataFrame for each label
+#             label_df = frame[frame['Label'] == label]
             
+#             # Calculate mean for each column
+#             mean_values = label_df.mean()
+#             mean_value_list.append(mean_values)
+#     return
 
 
-    # create barplot for triplicates
 
-
-    # create viSNE from triplicates
-
-    # saves barplot and visne map with labels in dir 
-
-    return Label_filename_df
+# %%
