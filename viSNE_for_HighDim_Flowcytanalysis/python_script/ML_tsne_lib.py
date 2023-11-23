@@ -374,7 +374,7 @@ def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2):
     y_test = test_df["filename"]
 
 
-    rf_class= RandomForestClassifier(n_estimators=100,max_depth=50,random_state=42,verbose=True)
+    rf_class= RandomForestClassifier(n_estimators=100,max_depth=50,random_state=42,verbose=True,n_jobs= 3)
 
     rf_class.fit(X_train,y_train)
 
@@ -613,7 +613,7 @@ def create_deepL_classifier(X_matrix, y_pred):
     return model
 
 
-def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save,definitions_dict):
+def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save):
 
     """
     Combination function to evaluate a set of data in a directory.
@@ -641,27 +641,31 @@ def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save,definitions
             Labels = classifier.predict(transform_frame.iloc[:,:-1])
             unique_labels, label_count = np.unique(Labels, return_counts=True)   
             for label, count in zip(unique_labels, label_count):
-                new_row[label] =count
+                
+                new_row[label] = [count]
 
                 
             calculating_df = calculating_df.append(new_row, ignore_index=True)
-
+            calculating_df.fillna(value=0,axis=0)
 
         Mean = np.mean(calculating_df).T
         std = np.std(calculating_df,ddof=1) 
         confidence_interval = t.interval(0.95, 2, Mean, std / np.sqrt(2))
+        cf_lower = confidence_interval[0]
+        cf_upper = confidence_interval[1]
         new_row2= pd.DataFrame()
         filename = np.unique(frame["filename"])
         new_row2["filename"]=filename
 
-        for each_label,each_mean,each_cf in zip(unique_labels,Mean,confidence_interval):
+        for each_label,each_mean,each_cf_upper,each_cf_lower in zip(unique_labels,Mean,cf_upper,cf_lower):
             new_row2[each_label]= [None]
             new_row2[each_label] = each_mean
-            new_row2[each_label + "cf_0.95_lower"] = each_cf[0]
-            new_row2[each_label + "cf_0.95_upper"] = each_cf[1]
+            new_row2[each_label + "cf_0.95_lower"] = each_cf_lower
+            new_row2[each_label + "cf_0.95_upper"] = each_cf_upper
         
 
-        Label_filename_df.append(new_row2, ignore_index=True)
+    
+        Label_filename_df = Label_filename_df.append(new_row2, ignore_index=True)
 
     Label_filename_df.fillna(value=0,axis=0)
         
@@ -670,8 +674,10 @@ def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save,definitions
     return Label_filename_df, frame 
 
 
-# def ML_statistic():
-#      for label in unique_labels:
+# def ML_statistic(df):
+     
+
+#      for label in np.unique(df["Label"]):
 #             # Create a DataFrame for each label
 #             label_df = frame[frame['Label'] == label]
             
