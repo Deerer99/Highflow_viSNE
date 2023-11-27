@@ -631,7 +631,7 @@ def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save):
     #load fcs files
     fcs_data=load_fcs_from_dir(directory_path=dir_evaluate,label_data_frames=True)
     Label_filename_df = pd.DataFrame()
-    
+    frames = []
     for i in range(0,len(fcs_data),3):
 
         calculating_df = pd.DataFrame()
@@ -647,6 +647,8 @@ def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save):
                 
             calculating_df = calculating_df.append(new_row, ignore_index=True)
             calculating_df.fillna(value=0,axis=0)
+            frame["Label"]=Labels 
+            frames.append(frame)
 
         Mean = np.mean(calculating_df).T
         std = np.std(calculating_df,ddof=1) 
@@ -669,22 +671,24 @@ def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save):
 
     Label_filename_df.fillna(value=0,axis=0)
         
-             
+    if dir_save is not None:
+        Label_filename_df.to_excel(dir_save)
 
-    return Label_filename_df, frame 
+    return Label_filename_df, frames 
 
 
-# def ML_statistic(df):
+def ML_statistic(df):
      
-
-#      for label in np.unique(df["Label"]):
-#             # Create a DataFrame for each label
-#             label_df = frame[frame['Label'] == label]
-            
-#             # Calculate mean for each column
-#             mean_values = label_df.mean()
-#             mean_value_list.append(mean_values)
-#     return
+    df=pd.concat(df)
+    mean_value_list = []
+    for label in np.unique(df["Label"]):
+        # Create a DataFrame for each label
+        label_df = df[df['Label'] == label]
+        
+        # Calculate mean for each column
+        mean_values = label_df.mean(numeric_only=True)
+        mean_value_list.append([mean_values,label])
+    return mean_value_list
 
 
 
