@@ -54,21 +54,45 @@ def load_data_from_structured_directory(rootdir):
 
     list_of_labeld_df = []
     # loop through the direcotry
-    for subdir, dirs, f in os.walk(rootdir):
-        for each_dir in dirs:
-        # check the files inside if csv or fcs ending 
-            files = os.listdir(os.path.join(subdir,each_dir))
-                               
+    for each_dir in os.listdir(rootdir):
+        
+    
+        files = os.listdir(os.path.join(rootdir,each_dir))
+        if os.path.isdir(os.path.join(rootdir,each_dir,files[0])) is False:
+            # check the files inside if csv or fcs ending 
+            files = os.listdir(os.path.join(rootdir,each_dir))
+                            
             if files[0].endswith(".csv"):
-                labeld_df = label_data_according_to_definitions(os.path.join(subdir,each_dir))
+                labeld_df = label_data_according_to_definitions(os.path.join(rootdir,each_dir))
                 for i, df in enumerate(labeld_df):
                     df['filename'] = each_dir
+                    print(f"loaded {each_dir}")
                 list_of_labeld_df.append(labeld_df)
             elif files[0].endswith(".fcs"):
-                labeld_df = load_fcs_from_dir(os.path.join(subdir,each_dir))
+                labeld_df = load_fcs_from_dir(os.path.join(rootdir,each_dir))
                 for i, df in enumerate(labeld_df):
                     df['filename'] = each_dir
+                    print(f"loaded {each_dir}")
                 list_of_labeld_df.append(labeld_df)
+
+
+        elif os.path.isdir(os.path.join(rootdir,each_dir,files[0])) is True:
+                for each_subdir in os.listdir(os.path.join(rootdir,each_dir)):
+                    files = os.listdir(os.path.join(rootdir,each_dir,each_subdir))
+                            
+                    if files[0].endswith(".csv"):
+                        labeld_df = label_data_according_to_definitions(os.path.join(rootdir,each_dir,each_subdir))
+                        for i, df in enumerate(labeld_df):
+                            df['filename'] = each_dir
+                            print(f"loaded {each_dir}")
+                        list_of_labeld_df.append(labeld_df)
+                    elif files[0].endswith(".fcs"):
+                        labeld_df = load_fcs_from_dir(os.path.join(rootdir,each_dir,each_subdir))
+                        for i, df in enumerate(labeld_df):
+                            df['filename'] = each_dir
+                            print(f"loaded {each_dir}")
+                        list_of_labeld_df.append(labeld_df)
+
         
     concatenated_list = []
     for sublist in list_of_labeld_df:
@@ -131,7 +155,7 @@ def load_fcs_from_dir(directory_path,label_data_frames=False):
         if file.endswith(".fcs"):
             file_path = os.path.join(directory_path, file)
             try:
-                fcs_data = fk.Sample(file_path,cache_original_events=True)
+                fcs_data = fk.Sample(file_path,cache_original_events=True,ignore_offset_error=True)
                 fcs_data_df = fcs_data.as_dataframe(source="orig")
                 fcs_data_df = remove_overflow(fcs_data_df)
                 fcs_data_df = fcs_data_df[[col for col in fcs_data_df.columns if col[0].endswith('-A')]]
@@ -200,7 +224,7 @@ def asinh_transform(subsampling_df, factor=150,min_max_trans = True):
         if col_name != 'filename' and pd.api.types.is_numeric_dtype(subsampling_df[col_name]):
             col = subsampling_df[col_name]
             transformed_df[col_name] = np.arcsinh(col / factor)
-
+        
             # Min-max normalization
             if min_max_trans is True:
                 col_min = transformed_df[col_name].min()
@@ -345,7 +369,7 @@ def cluster_tsne_map(tsne_result,m=30,s=5):
 # implement clustering based on mchine learning$
 
 # implement machine learning model, use Y to predict labels
-def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2):
+def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2,additional_df_non_transformed=None):
 
     """
     Creates a machine learning model with the random forest classifier and prints a report
@@ -363,10 +387,13 @@ def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2):
     """
 
     combined_df = pd.concat(labeld_dfs,ignore_index=True)
-    combined_df_trans = asinh_transform(combined_df)
+    
+    
+    combined_df_trans = asinh_transform(combined_df,min_max_trans=False)
+    combined_df_trans=combined_df_trans.append(additional_df_non_transformed)
     combined_df_rand= combined_df_trans.sample(frac=1,random_state=random_state).reset_index(drop=True)
     
-    train_df, test_df = train_test_split(combined_df_rand,test_size=test_size,random_state=42)
+    train_df, test_df = train_test_split(combined_df_rand,test_size=test_size)
     X_train = train_df.drop("filename",axis=1)
     y_train = train_df["filename"]
 
@@ -374,7 +401,7 @@ def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2):
     y_test = test_df["filename"]
 
 
-    rf_class= RandomForestClassifier(n_estimators=100,max_depth=50,random_state=42,verbose=True,n_jobs= 3)
+    rf_class= RandomForestClassifier(n_estimators=250,max_depth=50,verbose=True,n_jobs= 3,random_state=random_state)
 
     rf_class.fit(X_train,y_train)
 
@@ -613,7 +640,7 @@ def create_deepL_classifier(X_matrix, y_pred):
     return model
 
 
-def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save):
+def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save,subdir=False,triplicates=False):
 
     """
     Combination function to evaluate a set of data in a directory.
@@ -628,16 +655,36 @@ def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save):
     
     
     """
+
     #load fcs files
-    fcs_data=load_fcs_from_dir(directory_path=dir_evaluate,label_data_frames=True)
+
+
+    if subdir is True:
+        dirs = os.listdir(dir_evaluate)
+        list_dirs = []
+        for each_dir in dirs:
+            each_dir_path = os.path.join(dir_evaluate,each_dir)
+            fcs_data=load_fcs_from_dir(each_dir_path,label_data_frames=True)
+            list_dirs.extend(fcs_data)
+        
+        fcs_data=list_dirs
+    elif subdir is False:
+        fcs_data=load_fcs_from_dir(directory_path=dir_evaluate,label_data_frames=True)
+
+        
     Label_filename_df = pd.DataFrame()
     frames = []
-    for i in range(0,len(fcs_data),3):
+    k=1
+    if triplicates is True:
+        k=3
+
+    for i in range(0,len(fcs_data),k):
 
         calculating_df = pd.DataFrame()
-        for frame in fcs_data[i:i+3]:
+        num_events=0
+        for frame in fcs_data[i:i+k]:
             new_row = pd.DataFrame()
-            transform_frame = asinh_transform(frame)
+            transform_frame = asinh_transform(frame,min_max_trans=False)
             Labels = classifier.predict(transform_frame.iloc[:,:-1])
             unique_labels, label_count = np.unique(Labels, return_counts=True)   
             for label, count in zip(unique_labels, label_count):
@@ -649,7 +696,12 @@ def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save):
             calculating_df.fillna(value=0,axis=0)
             frame["Label"]=Labels 
             frames.append(frame)
+            print(frame["filename"])
 
+
+            num_events += len(frame)
+
+        
         Mean = np.mean(calculating_df).T
         std = np.std(calculating_df,ddof=1) 
         confidence_interval = t.interval(0.95, 2, Mean, std / np.sqrt(2))
@@ -658,12 +710,13 @@ def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save):
         new_row2= pd.DataFrame()
         filename = np.unique(frame["filename"])
         new_row2["filename"]=filename
+        new_row2["events"] = num_events
 
         for each_label,each_mean,each_cf_upper,each_cf_lower in zip(unique_labels,Mean,cf_upper,cf_lower):
             new_row2[each_label]= [None]
-            new_row2[each_label] = each_mean
-            new_row2[each_label + "cf_0.95_lower"] = each_cf_lower
-            new_row2[each_label + "cf_0.95_upper"] = each_cf_upper
+            new_row2[each_label] = (each_mean/num_events)*100
+            new_row2[each_label + "cf_0.95_lower"] = (each_cf_lower/num_events)*100
+            new_row2[each_label + "cf_0.95_upper"] = (each_cf_upper/num_events)*100
         
 
     
@@ -677,19 +730,34 @@ def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save):
     return Label_filename_df, frames 
 
 
-def ML_statistic(df):
+def ML_statistic(df,dir_save=None):
      
     df=pd.concat(df)
     mean_value_list = []
+    label_df_list =[]
     for label in np.unique(df["Label"]):
-        # Create a DataFrame for each label
-        label_df = df[df['Label'] == label]
         
-        # Calculate mean for each column
+        label_df = df[df['Label'] == label]
+        # add functionality for exporting event data (raw)
+        
         mean_values = label_df.mean(numeric_only=True)
         mean_value_list.append([mean_values,label])
-    return mean_value_list
+        label_df_list.append([label_df_list,label])
+
+    if dir_save is not None:
+        label_df_list.to_excel(dir_save)
+        mean_value_list.to_excel(dir_save)
+        
+    return mean_value_list,label_df_list
 
 
 
 # %%
+def export_loaded_fcs_data_col_A_as_filename_csv(fcs_data_list,dir_save):
+    for dataset in fcs_data_list:
+        dataset=remove_overflow(dataset)
+        name = np.unique(dataset["filename"])
+        dataset=dataset.drop("filename",axis=1)
+        dataset.to_csv(os.path.join(dir_save,f"{name}_A_export.csv"))
+    
+                        
