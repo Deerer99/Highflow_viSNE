@@ -139,12 +139,14 @@ def remove_overflow(fcs_df):
     return df 
 
 # %%
-def load_fcs_from_dir(directory_path,label_data_frames=False):
+def load_fcs_from_dir(directory_path,label_data_frames=False,data_from_matlab = False):
     """ 
     Loads in the events in the matrix from the given directory
 
     Parameters:
     - directory_path: path of the directory
+    - label_data_frames: if the dataframes shoud be labeld with the filename 
+    - data from matlab: does not drop level, important if original files or already processed files are used
 
     Return: 
     - returns list of dataframes of all Area columns in question, no transformation is applied
@@ -158,10 +160,16 @@ def load_fcs_from_dir(directory_path,label_data_frames=False):
                 fcs_data = fk.Sample(file_path,cache_original_events=True,ignore_offset_error=True)
                 fcs_data_df = fcs_data.as_dataframe(source="orig")
                 fcs_data_df = remove_overflow(fcs_data_df)
-                fcs_data_df = fcs_data_df[[col for col in fcs_data_df.columns if col[0].endswith('-A')]]
+                if data_from_matlab is False:
+                    fcs_data_df = fcs_data_df[[col for col in fcs_data_df.columns if col[0].endswith('-A')]]
                 fcs_data_df.columns = fcs_data_df.columns.droplevel(0)
+                
+                if "bh-SNE1" in fcs_data_df.columns:
+                    fcs_data_df=fcs_data_df.drop("bh-SNE2",axis=1)
+                    fcs_data_df=fcs_data_df.drop("bh-SNE1",axis=1)
+
                 if label_data_frames is True:
-                    fcs_data_df["filename"] = file
+                    fcs_data_df.loc[:,"filename"] = file
                 fcs_files.append(fcs_data_df)
             except Exception as e:
                 print(f"An error occurred while processing {file}: {e}")
@@ -223,7 +231,7 @@ def asinh_transform(subsampling_df, factor=150,min_max_trans = True):
     for col_name in subsampling_df.columns:
         if col_name != 'filename' and pd.api.types.is_numeric_dtype(subsampling_df[col_name]):
             col = subsampling_df[col_name]
-            transformed_df[col_name] = np.arcsinh(col / factor)
+            transformed_df[col_name] = np.arcsinh(col / factor)+1
         
             # Min-max normalization
             if min_max_trans is True:
@@ -321,7 +329,7 @@ def create_visne_with_dropdown(tsne_result,subsampling_df):
 
         def update_scatter_plot(selected_col_for_coloring):
                 plt.figure(figsize=(8,6))
-                scatter = plt.scatter(df["X1"], df["X2"], c = color_matrix[selected_col_for_coloring], cmap="rainbow",s=0.01)
+                scatter = plt.scatter(df["X1"], df["X2"], c = color_matrix[selected_col_for_coloring], cmap="rainbow",s=0.1)
                 plt.colorbar(scatter,label="Strenght")
                 plt.show()
 
@@ -340,7 +348,7 @@ def create_visne_with_dropdown(tsne_result,subsampling_df):
 # %%
 # automatic clustering 
 
-def cluster_tsne_map(tsne_result,m=30,s=5):
+def cluster_tsne_map(tsne_result,m=100,s=10):
     """
     Functions to automatically cluster the viSNE map via HDBSCAN
 
@@ -760,4 +768,23 @@ def export_loaded_fcs_data_col_A_as_filename_csv(fcs_data_list,dir_save):
         dataset=dataset.drop("filename",axis=1)
         dataset.to_csv(os.path.join(dir_save,f"{name}_A_export.csv"))
     
-                        
+
+
+
+def import_data_from_Matlab(path_to_dir):
+
+    """ data shoud be seperated for each population and be in one dataframe, the filename get added to the end column, returns dataframe"""
+    fcs_data_df = []
+    for file in os.listdir(path_to_dir):
+        try:
+            file_path = os.path.join(path_to_dir, file)
+            fcs_data = fk.Sample(file_path,cache_original_events=True,ignore_offset_discrepancy=True,ignore_offset_error=True)
+            fcs_data_df = fcs_data.as_dataframe(source="orig")
+        except:
+
+            print(f"Error in file: {file}")
+            fcs_data_df = None
+            pass
+    return fcs_data_df
+        
+    
