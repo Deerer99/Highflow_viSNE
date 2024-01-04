@@ -128,6 +128,7 @@ def label_data_according_to_definitions(csv_path,definitions_dict= None):
             elif definitions_dict is None:
                 df['filename']= filename
                 labeled_dfs.append(df)
+            df = remove_overflow(df)
 
     return labeled_dfs
 
@@ -141,7 +142,7 @@ def remove_overflow(fcs_df):
 # %%
 def load_fcs_from_dir(directory_path,label_data_frames=False,data_from_matlab = False):
     """ 
-    Loads in the events in the matrix from the given directory
+    Loads in the events in the matrix from the given directory, if the found file shoud be a directory the structured directory method is applied
 
     Parameters:
     - directory_path: path of the directory
@@ -154,8 +155,8 @@ def load_fcs_from_dir(directory_path,label_data_frames=False,data_from_matlab = 
     fcs_files = []
     # Iterate through files in the directory
     for file in os.listdir(directory_path):
+        file_path = os.path.join(directory_path, file)
         if file.endswith(".fcs"):
-            file_path = os.path.join(directory_path, file)
             try:
                 fcs_data = fk.Sample(file_path,cache_original_events=True,ignore_offset_error=True)
                 fcs_data_df = fcs_data.as_dataframe(source="orig")
@@ -173,6 +174,12 @@ def load_fcs_from_dir(directory_path,label_data_frames=False,data_from_matlab = 
                 fcs_files.append(fcs_data_df)
             except Exception as e:
                 print(f"An error occurred while processing {file}: {e}")
+
+        elif os.path.isdir(file_path) is True:
+            print("Structured directory detected, check if loading was correct")
+            fcs_data = load_data_from_structured_directory(file_path)
+            fcs_files.extend(fcs_data)
+
     return fcs_files
 
 
@@ -231,7 +238,8 @@ def asinh_transform(subsampling_df, factor=150,min_max_trans = True):
     for col_name in subsampling_df.columns:
         if col_name != 'filename' and pd.api.types.is_numeric_dtype(subsampling_df[col_name]):
             col = subsampling_df[col_name]
-            transformed_df[col_name] = np.arcsinh(col / factor)+1
+            transformed_df[col_name] = np.arcsinh(col / factor)
+            
         
             # Min-max normalization
             if min_max_trans is True:
@@ -377,7 +385,7 @@ def cluster_tsne_map(tsne_result,m=100,s=10):
 # implement clustering based on mchine learning$
 
 # implement machine learning model, use Y to predict labels
-def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2,additional_df_non_transformed=None):
+def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2,additional_df_non_transformed=None,asinh_transformation=True):
 
     """
     Creates a machine learning model with the random forest classifier and prints a report
@@ -396,9 +404,18 @@ def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2,additional
 
     combined_df = pd.concat(labeld_dfs,ignore_index=True)
     
-    
-    combined_df_trans = asinh_transform(combined_df,min_max_trans=False)
-    combined_df_trans=combined_df_trans.append(additional_df_non_transformed)
+    if asinh_transformation is True:
+        combined_df_trans = asinh_transform(combined_df,min_max_trans=False)
+    else:
+        combined_df_trans=combined_df
+
+    if additional_df_non_transformed is not None:
+        if type(additional_df_non_transformed) is list:
+            additional_df_non_transformed=pd.concat(additional_df_non_transformed,ignore_index=True)
+            combined_df_trans=pd.concat([combined_df_trans,additional_df_non_transformed],ignore_index=True)
+        else:
+            print(f"Dataframe must be inputted as list but was given as {type(additional_df_non_transformed)}")
+
     combined_df_rand= combined_df_trans.sample(frac=1,random_state=random_state).reset_index(drop=True)
     
     train_df, test_df = train_test_split(combined_df_rand,test_size=test_size)
@@ -718,7 +735,7 @@ def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save,subdir=Fals
         new_row2= pd.DataFrame()
         filename = np.unique(frame["filename"])
         new_row2["filename"]=filename
-        new_row2["average_events"] = num_events
+        new_row2["event_count"] = num_events
 
         for each_label,each_mean,each_cf_upper,each_cf_lower in zip(unique_labels,Mean,cf_upper,cf_lower):
             new_row2[each_label]= [None]
@@ -730,7 +747,7 @@ def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save,subdir=Fals
     
         Label_filename_df = Label_filename_df.append(new_row2, ignore_index=True)
 
-    Label_filename_df.fillna(value=0,axis=0)
+        Label_filename_df.fillna(value=0,axis=0)
         
     if dir_save is not None:
         Label_filename_df.to_excel(dir_save)
