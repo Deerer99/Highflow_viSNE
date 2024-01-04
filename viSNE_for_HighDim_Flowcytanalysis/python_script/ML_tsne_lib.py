@@ -718,13 +718,13 @@ def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save,subdir=Fals
         new_row2= pd.DataFrame()
         filename = np.unique(frame["filename"])
         new_row2["filename"]=filename
-        new_row2["events"] = num_events
+        new_row2["average_events"] = num_events
 
         for each_label,each_mean,each_cf_upper,each_cf_lower in zip(unique_labels,Mean,cf_upper,cf_lower):
             new_row2[each_label]= [None]
-            new_row2[each_label] = (each_mean/num_events)*100
-            new_row2[each_label + "cf_0.95_lower"] = (each_cf_lower/num_events)*100
-            new_row2[each_label + "cf_0.95_upper"] = (each_cf_upper/num_events)*100
+            new_row2[each_label] = ((each_mean*3)/num_events)*100
+            new_row2[each_label + "cf_0.95_lower"] = ((3*each_cf_lower)/num_events)*100
+            new_row2[each_label + "cf_0.95_upper"] = (3*(each_cf_upper)/num_events)*100
         
 
     
@@ -762,7 +762,15 @@ def ML_statistic(df,dir_save=None):
 
 # %%
 def export_loaded_fcs_data_col_A_as_filename_csv(fcs_data_list,dir_save):
-    for dataset in fcs_data_list:
+
+    concat_list = []
+    for i in range(0,78,3):
+        new = pd.concat(fcs_data_list[i:i+3])
+        print(len(new))
+        concat_list.append(new)
+
+    
+    for dataset in concat_list:
         dataset=remove_overflow(dataset)
         name = np.unique(dataset["filename"])
         dataset=dataset.drop("filename",axis=1)
