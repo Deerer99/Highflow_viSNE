@@ -18,6 +18,7 @@ import matplotlib.colors as mcolors
 import hdbscan
 from keras import Sequential
 from keras.layers import Dense
+from sklearn.metrics import confusion_matrix,ConfusionMatrixDisplay
 
 
 # %%
@@ -177,8 +178,9 @@ def load_fcs_from_dir(directory_path,label_data_frames=False,data_from_matlab = 
 
         elif os.path.isdir(file_path) is True:
             print("Structured directory detected, check if loading was correct")
-            fcs_data = load_data_from_structured_directory(file_path)
+            fcs_data = load_data_from_structured_directory(directory_path)
             fcs_files.extend(fcs_data)
+            break
 
     return fcs_files
 
@@ -435,6 +437,9 @@ def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2,additional
 
     accuracy = accuracy_score(y_test,y_pred)
     report = classification_report(y_test,y_pred)
+    conf_matrix = confusion_matrix(y_pred=y_pred,y_true=y_test)
+    matrix= ConfusionMatrixDisplay.from_predictions(y_true=y_test,y_pred=y_pred)
+    matrix.show()
 
     print(f"accuracy:{accuracy:.2f}")
     print("Classification Report:")
@@ -781,7 +786,7 @@ def ML_statistic(df,dir_save=None):
 def export_loaded_fcs_data_col_A_as_filename_csv(fcs_data_list,dir_save):
 
     concat_list = []
-    for i in range(0,78,3):
+    for i in range(0,len(fcs_data_list),3):
         new = pd.concat(fcs_data_list[i:i+3])
         print(len(new))
         concat_list.append(new)
@@ -791,9 +796,22 @@ def export_loaded_fcs_data_col_A_as_filename_csv(fcs_data_list,dir_save):
         dataset=remove_overflow(dataset)
         name = np.unique(dataset["filename"])
         dataset=dataset.drop("filename",axis=1)
-        dataset.to_csv(os.path.join(dir_save,f"{name}_A_export.csv"))
+        dataset.to_csv(os.path.join(dir_save,f"{name}_A_export.csv"),index=False)
+    
+def single_fcs_file_to_csv(dir_fcs, dir_save,transform = True):
+
+    fcs_file = load_fcs_from_dir(dir_fcs,label_data_frames=True)
+    dataset=remove_overflow(fcs_file[0])
+    name = np.unique(dataset["filename"])
+    dataset=dataset.drop("filename",axis=1)
+
+    if transform is True:
+        dataset = asinh_transform(dataset,min_max_trans=False)
+    dataset.to_csv(os.path.join(dir_save,f"{name}_A_export_trans_woindex={transform}.csv"),index=False)
+
     
 
+    pass
 
 
 def import_data_from_Matlab(path_to_dir):
