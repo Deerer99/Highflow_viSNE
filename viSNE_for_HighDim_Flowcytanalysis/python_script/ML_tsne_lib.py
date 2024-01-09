@@ -37,7 +37,7 @@ definitions_dict = {
 
     }
 
-def load_data_from_structured_directory(rootdir):
+def load_data_from_structured_directory(rootdir,data_from_matlab=False):
     """
     Function to load data out of structured directories where the structure represents the measurements of each instance for which the label shoud be represented
     The label column is going to be determined from the name of the direcory in the root dir. Purpose is to label data according to dir names and prepare it for ML application
@@ -56,45 +56,44 @@ def load_data_from_structured_directory(rootdir):
     list_of_labeld_df = []
     # loop through the direcotry
     for each_dir in os.listdir(rootdir):
-        
-    
-        files = os.listdir(os.path.join(rootdir,each_dir))
-        if os.path.isdir(os.path.join(rootdir,each_dir,files[0])) is False:
-            # check the files inside if csv or fcs ending 
+        if os.path.isdir(os.path.join(rootdir,each_dir)):
             files = os.listdir(os.path.join(rootdir,each_dir))
-                            
-            if files[0].endswith(".csv"):
-                labeld_df = label_data_according_to_definitions(os.path.join(rootdir,each_dir))
-                for i, df in enumerate(labeld_df):
-                    df['filename'] = each_dir
-                    print(f"loaded {each_dir}")
-                list_of_labeld_df.append(labeld_df)
-            elif files[0].endswith(".fcs"):
-                labeld_df = load_fcs_from_dir(os.path.join(rootdir,each_dir))
-                for i, df in enumerate(labeld_df):
-                    df['filename'] = each_dir
-                    print(f"loaded {each_dir}")
-                list_of_labeld_df.append(labeld_df)
+            if os.path.isdir(os.path.join(rootdir,each_dir,files[0])) is False:
+                # check the files inside if csv or fcs ending 
+                files = os.listdir(os.path.join(rootdir,each_dir))
+                                
+                if files[0].endswith(".csv"):
+                    labeld_df = label_data_according_to_definitions(os.path.join(rootdir,each_dir))
+                    for i, df in enumerate(labeld_df):
+                        df['filename'] = each_dir
+                        print(f"loaded {each_dir}")
+                    list_of_labeld_df.append(labeld_df)
+                elif files[0].endswith(".fcs"):
+                    labeld_df = load_fcs_from_dir(os.path.join(rootdir,each_dir),data_from_matlab=data_from_matlab)
+                    for i, df in enumerate(labeld_df):
+                        df['filename'] = each_dir
+                        print(f"loaded {each_dir}")
+                    list_of_labeld_df.append(labeld_df)
 
 
-        elif os.path.isdir(os.path.join(rootdir,each_dir,files[0])) is True:
-                for each_subdir in os.listdir(os.path.join(rootdir,each_dir)):
-                    files = os.listdir(os.path.join(rootdir,each_dir,each_subdir))
-                            
-                    if files[0].endswith(".csv"):
-                        labeld_df = label_data_according_to_definitions(os.path.join(rootdir,each_dir,each_subdir))
-                        for i, df in enumerate(labeld_df):
-                            df['filename'] = each_dir
-                            print(f"loaded {each_dir}")
-                        list_of_labeld_df.append(labeld_df)
-                    elif files[0].endswith(".fcs"):
-                        labeld_df = load_fcs_from_dir(os.path.join(rootdir,each_dir,each_subdir))
-                        for i, df in enumerate(labeld_df):
-                            df['filename'] = each_dir
-                            print(f"loaded {each_dir}")
-                        list_of_labeld_df.append(labeld_df)
-
+            elif os.path.isdir(os.path.join(rootdir,each_dir,files[0])) is True:
+                    for each_subdir in os.listdir(os.path.join(rootdir,each_dir)):
+                        files = os.listdir(os.path.join(rootdir,each_dir,each_subdir))
+                                
+                        if files[0].endswith(".csv"):
+                            labeld_df = label_data_according_to_definitions(os.path.join(rootdir,each_dir,each_subdir))
+                            for i, df in enumerate(labeld_df):
+                                df['filename'] = each_dir
+                                print(f"loaded {each_dir}")
+                            list_of_labeld_df.append(labeld_df)
+                        elif files[0].endswith(".fcs"):
+                            labeld_df = load_fcs_from_dir(os.path.join(rootdir,each_dir,each_subdir),data_from_matlab=data_from_matlab)
+                            for i, df in enumerate(labeld_df):
+                                df['filename'] = each_dir
+                                print(f"loaded {each_dir}")
+                            list_of_labeld_df.append(labeld_df)
         
+
     concatenated_list = []
     for sublist in list_of_labeld_df:
         concatenated_list.extend(sublist)
@@ -178,7 +177,7 @@ def load_fcs_from_dir(directory_path,label_data_frames=False,data_from_matlab = 
 
         elif os.path.isdir(file_path) is True:
             print("Structured directory detected, check if loading was correct")
-            fcs_data = load_data_from_structured_directory(directory_path)
+            fcs_data = load_data_from_structured_directory(directory_path,data_from_matlab=data_from_matlab)
             fcs_files.extend(fcs_data)
             break
 
@@ -387,7 +386,7 @@ def cluster_tsne_map(tsne_result,m=100,s=10):
 # implement clustering based on mchine learning$
 
 # implement machine learning model, use Y to predict labels
-def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2,additional_df_non_transformed=None,asinh_transformation=True):
+def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2,additional_df_non_transformed=None,asinh_transformation=True,frac=1):
 
     """
     Creates a machine learning model with the random forest classifier and prints a report
@@ -418,7 +417,7 @@ def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2,additional
         else:
             print(f"Dataframe must be inputted as list but was given as {type(additional_df_non_transformed)}")
 
-    combined_df_rand= combined_df_trans.sample(frac=1,random_state=random_state).reset_index(drop=True)
+    combined_df_rand= combined_df_trans.sample(frac=frac,random_state=random_state).reset_index(drop=True)
     
     train_df, test_df = train_test_split(combined_df_rand,test_size=test_size)
     X_train = train_df.drop("filename",axis=1)
@@ -437,14 +436,13 @@ def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2,additional
 
     accuracy = accuracy_score(y_test,y_pred)
     report = classification_report(y_test,y_pred)
-    conf_matrix = confusion_matrix(y_pred=y_pred,y_true=y_test)
-    matrix= ConfusionMatrixDisplay.from_predictions(y_true=y_test,y_pred=y_pred)
-    matrix.show()
+    conf_matrix = confusion_matrix(y_pred=y_pred,y_true=y_test,labels=rf_class.classes_)
+    
 
     print(f"accuracy:{accuracy:.2f}")
     print("Classification Report:")
     print(report)
-    return rf_class
+    return rf_class, conf_matrix
 
 
 # %%
