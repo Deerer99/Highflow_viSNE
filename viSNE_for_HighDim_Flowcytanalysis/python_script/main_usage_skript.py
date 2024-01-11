@@ -17,7 +17,7 @@ fcs_data_for_ML_label_MP_Sediment = MLtsne.load_data_from_structured_directory(d
 
 rf_class, conf_matrix, train_df_all = MLtsne.develop_ML_model_RF(fcs_data_for_ML_label_MP_Sediment,test_size=0.2,random_state=42,additional_df_non_transformed=fcs_data_for_ML_label,frac=0.1)
 
-summary_df,pred_df_list= MLtsne.evaluate_dir_with_ML_classifier(dir_evaluate=dir_path_test_data,classifier=rf_class,dir_save=dir_save,subdir=False,triplicates=True)
+summary_df,pred_df_list= MLtsne.evaluate_dir_with_ML_classifier(dir_evaluate=dir_path_test_data,classifier=rf_class,dir_save=dir_save,subdir=False,triplicates=True,conf_interval=False)
 
 pred_df_all = MLtsne.asinh_transform(pd.concat(pred_df_list),min_max_trans=False)
 pure =pred_df_all.drop("filename",axis=1)

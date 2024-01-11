@@ -668,7 +668,7 @@ def create_deepL_classifier(X_matrix, y_pred):
     return model
 
 
-def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save,subdir=False,triplicates=False):
+def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save,subdir=False,triplicates=False,conf_interval=True):
 
     """
     Combination function to evaluate a set of data in a directory.
@@ -743,9 +743,10 @@ def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save,subdir=Fals
         for each_label,each_mean,each_cf_upper,each_cf_lower in zip(unique_labels,Mean,cf_upper,cf_lower):
             new_row2[each_label]= [None]
             new_row2[each_label] = ((each_mean*3)/num_events)*100
-            new_row2[each_label + "cf_0.95_lower"] = ((3*each_cf_lower)/num_events)*100
-            new_row2[each_label + "cf_0.95_upper"] = (3*(each_cf_upper)/num_events)*100
-        
+            if conf_interval is True:
+                new_row2[each_label + "cf_0.95_lower"] = ((3*each_cf_lower)/num_events)*100
+                new_row2[each_label + "cf_0.95_upper"] = (3*(each_cf_upper)/num_events)*100
+            
 
     
         Label_filename_df = Label_filename_df.append(new_row2, ignore_index=True)
