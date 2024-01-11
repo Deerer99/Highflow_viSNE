@@ -872,11 +872,11 @@ def add_location(df):
 
     for index,row in df.iterrows():
         if names[0] in row["filename"]:
-            df["location"][index]= 50
+            df["location"][index]= 2
         elif names[1] in row["filename"]:
-            df["location"][index]=400
+            df["location"][index]=3
         elif names[2] in row["filename"]:
-            df["location"][index] = -50
+            df["location"][index] = 1
 
 
     return df
@@ -975,9 +975,34 @@ def create_tsne_for_species_percent(summary_df,plot=True):
         plt.scatter(tsne_cords[:,0],tsne_cords[:,1],c=location_label, cmap=matplotlib.colors.ListedColormap(colors))
         plt.legend(handles=[red_patch,blue_patch,green_patch])
         for each_cords,name in zip(tsne_cords,summary_df["filename"]):
-            plt.text(each_cords[0],each_cords[1],name[0:2],rotation=30,fontsize=8)
+            plt.text(each_cords[0],each_cords[1],name[0:2],rotation=30,fontsize=7)
 
 
 
     plt.show()  
     return 
+
+
+def add_good_location_identifier(summary_df):
+    """
+    Non dynamic eg. specific identity creation in order to sort values for 
+    further processing
+    
+    
+    
+    """
+    filename = summary_df["filename"]
+    loc=[] 
+    for each_filename in filename:
+        each_filename_rep=each_filename.replace("U","D")
+        s= each_filename_rep.split("D")
+        loc.append(s[0])
+    
+    new_loc_list =[]
+    if "location" in summary_df.columns:
+        for i,entry in enumerate(summary_df["location"]):
+            new_loc = loc[i]+"."+str(entry)
+            new_loc = float(new_loc)
+            new_loc_list.append(new_loc)
+
+    return new_loc_list

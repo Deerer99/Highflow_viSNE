@@ -2,7 +2,7 @@ import ML_tsne_lib as MLtsne
 import pandas as pd
 from sklearn.manifold import TSNE
 import numpy as np
-
+import seaborn as sns
 
 dir_path_ML_Species = r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\MLModelwithpop\Species"
 dir_path_ML_Sediment_MP =r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\MLModelwithpop\MP_Sediment"
@@ -19,20 +19,40 @@ rf_class, conf_matrix, train_df_all = MLtsne.develop_ML_model_RF(fcs_data_for_ML
 
 summary_df,pred_df_list= MLtsne.evaluate_dir_with_ML_classifier(dir_evaluate=dir_path_test_data,classifier=rf_class,dir_save=dir_save,subdir=False,triplicates=True,conf_interval=False)
 
-tsne_cords = MLtsne.create_tsne_for_species_percent(summary_df=summary_df)
-df= MLtsne.add_location(summary_df)
 
 
 
+
+
+
+
+
+
+# test
+
+summary_df= MLtsne.add_location(summary_df)
+loc = MLtsne.add_good_location_identifier(summary_df=summary_df)
+summary_df["location"]= loc
+summary_df.reset_index(inplace=True, drop=True)
+
+water_df = pd.read_excel(r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\Water_data_pyr\Besos catchment summer 2022.xlsx",index_col=0)
+clean_df = summary_df.loc[:, ~summary_df.columns.isin(["filename", "event_count","location_label"])]
+water_df_clean = water_df.loc[:, water_df.iloc[0,:].isin(["DO","Temp","pH"])]
+water_df_clean.reset_index(drop=True,inplace=True)
+water_df_clean = water_df_clean.iloc[0:40]
+correlation_matrix = pd.concat([water_df_clean,clean_df],axis=1).corr()
+
+#code for tsne map pf the ML predicted species
+# tsne_cords = MLtsne.create_tsne_for_species_percent(summary_df=summary_df)
+# df= MLtsne.add_location(summary_df)
+
+
+#code for histogramms
 
 # pred_df_all = MLtsne.asinh_transform(pd.concat(pred_df_list),min_max_trans=False)
 # pure =pred_df_all.drop("filename",axis=1)
 # train_df_all = train_df_all.rename(columns={"filename":"Label"})
-
-
 # fig=MLtsne.compare_train_hist_to_pred_hist(train_df=train_df_all,pred_df=pure,channel="FS",label="Sediment")
-
-
 # MLtsne.create_hist_comparison_for_experiment(train_df=train_df_all,pred_df=pure,dir_save=r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\Plots experiment")
 
 
