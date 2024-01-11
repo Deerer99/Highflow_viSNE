@@ -19,8 +19,9 @@ import hdbscan
 from keras import Sequential
 from keras.layers import Dense
 from sklearn.metrics import confusion_matrix,ConfusionMatrixDisplay
-
-
+from sklearn.manifold import TSNE
+import matplotlib
+import matplotlib.patches as mpatches
 # %%
 # import data for viSNE
 csv_path = r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\SingleSpeciesData"
@@ -756,6 +757,8 @@ def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save,subdir=Fals
     if dir_save is not None:
         Label_filename_df.to_excel(dir_save)
 
+    Label_filename_df.dropna(inplace=True,axis=1,how="all")
+    Label_filename_df.fillna(0,inplace=True)
     return Label_filename_df, frames 
 
 
@@ -855,8 +858,34 @@ def create_hist_comparison_for_experiment(train_df, pred_df, dir_save):
             plt.close()
         
 
+def add_location(df):
+
+    """
+    Costum function to add meters upstream or down stream of the Wastewater treatment plant in order to have numerical data
+    
+    """
+    
+    names = ["DW1","DW2","UP"]
+    if "location" not in df.columns:
+        df.insert(1,"location",0)
 
 
+    for index,row in df.iterrows():
+        if names[0] in row["filename"]:
+            df["location"][index]= 50
+        elif names[1] in row["filename"]:
+            df["location"][index]=400
+        elif names[2] in row["filename"]:
+            df["location"][index] = -50
+
+
+    return df
+
+
+def analyze_corr_for_condition(df,):
+    """
+    Function analyzes the linear correlation
+    """
 
 
 
@@ -909,3 +938,46 @@ def import_data_from_Matlab(path_to_dir):
     return fcs_data_df
         
     
+def create_tsne_for_species_percent(summary_df,plot=True):
+
+
+    """ 
+    Generates tsne map in order to get overview of the data
+    This works only if names = ["DW1","DW2","UP"] in column "filename"
+    Otherwise the code has to get changed
+    Pretty undynamic coding in here so only use with caution
+    
+    """
+    names = ["DW1","DW2","UP"]
+    if "location_label" not in summary_df.columns:
+        summary_df.insert(1,"location_label",0)
+
+
+    for index,row in summary_df.iterrows():
+        if names[0] in row["filename"]:
+            summary_df["location_label"][index]= 1
+        elif names[1] in row["filename"]:
+            summary_df["location_label"][index]= 2
+        elif names[2] in row["filename"]:
+            summary_df["location_label"][index] = 3
+
+    red_patch = mpatches.Patch(color='red', label='DW1')
+    blue_patch =mpatches.Patch(color='blue', label='DW2')
+    green_patch = mpatches.Patch(color='green', label='UP')
+
+
+
+    clean_df = summary_df.loc[:, ~summary_df.columns.isin(["filename", "event_count","location_label"])]
+    tsne_cords =TSNE(n_components=2, learning_rate='auto', perplexity=4).fit_transform(X=clean_df)
+    location_label = summary_df["location_label"]
+    colors = ["red","green","blue"]
+    if plot is True:
+        plt.scatter(tsne_cords[:,0],tsne_cords[:,1],c=location_label, cmap=matplotlib.colors.ListedColormap(colors))
+        plt.legend(handles=[red_patch,blue_patch,green_patch])
+        for each_cords,name in zip(tsne_cords,summary_df["filename"]):
+            plt.text(each_cords[0],each_cords[1],name[0:2],rotation=30,fontsize=8)
+
+
+
+    plt.show()  
+    return 

@@ -6,7 +6,7 @@ import numpy as np
 
 dir_path_ML_Species = r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\MLModelwithpop\Species"
 dir_path_ML_Sediment_MP =r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\MLModelwithpop\MP_Sediment"
-dir_path_test_data = r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\NewProtocolSingleSpecies\iLink_species\ilink_test"
+dir_path_test_data = r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\NewProtocolSingleSpecies\iLink_species\iLink_total"
 dir_save=r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\ML_eval\iLinktest_PopSep.xlsx"
 
 
@@ -19,15 +19,21 @@ rf_class, conf_matrix, train_df_all = MLtsne.develop_ML_model_RF(fcs_data_for_ML
 
 summary_df,pred_df_list= MLtsne.evaluate_dir_with_ML_classifier(dir_evaluate=dir_path_test_data,classifier=rf_class,dir_save=dir_save,subdir=False,triplicates=True,conf_interval=False)
 
-pred_df_all = MLtsne.asinh_transform(pd.concat(pred_df_list),min_max_trans=False)
-pure =pred_df_all.drop("filename",axis=1)
-train_df_all = train_df_all.rename(columns={"filename":"Label"})
+tsne_cords = MLtsne.create_tsne_for_species_percent(summary_df=summary_df)
+df= MLtsne.add_location(summary_df)
 
 
-fig=MLtsne.compare_train_hist_to_pred_hist(train_df=train_df_all,pred_df=pure,channel="FS",label="Sediment")
 
 
-MLtsne.create_hist_comparison_for_experiment(train_df=train_df_all,pred_df=pure,dir_save=r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\Plots experiment")
+# pred_df_all = MLtsne.asinh_transform(pd.concat(pred_df_list),min_max_trans=False)
+# pure =pred_df_all.drop("filename",axis=1)
+# train_df_all = train_df_all.rename(columns={"filename":"Label"})
+
+
+# fig=MLtsne.compare_train_hist_to_pred_hist(train_df=train_df_all,pred_df=pure,channel="FS",label="Sediment")
+
+
+# MLtsne.create_hist_comparison_for_experiment(train_df=train_df_all,pred_df=pure,dir_save=r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\Plots experiment")
 
 
 
