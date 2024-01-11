@@ -442,7 +442,7 @@ def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2,additional
     print(f"accuracy:{accuracy:.2f}")
     print("Classification Report:")
     print(report)
-    return rf_class, conf_matrix
+    return rf_class, conf_matrix, combined_df_rand
 
 
 # %%
@@ -777,6 +777,85 @@ def ML_statistic(df,dir_save=None):
         mean_value_list.to_excel(dir_save)
         
     return mean_value_list,label_df_list
+
+
+def create_hist_for_channel_and_label(channel=None,label=None,df=None):
+
+    """
+    Creates a histogramm for the passed dataframe label and channel
+
+
+    """
+    # if channel or label or df is None:
+    #     print("One of channel, label or df was not defined")
+    #     return
+    # if type(df) is not pd.DataFrame:
+    #     print(f"df is no Dataframe but {type(df)}")
+    #     return
+    if len(df) == 0:
+        return
+
+    try:
+        df_label= df[df['Label'] == label]
+        channel_label_df = df_label[channel]
+        if len(channel_label_df)==0:
+            return
+        ax= channel_label_df.plot(kind="density")
+        ax.set_xlabel(channel)
+        
+    except:
+        print("Error in create_hist_for_channel_and_label")
+        return None
+
+    return ax
+
+def compare_train_hist_to_pred_hist(train_df,pred_df,channel=None,label=None):
+
+    """
+    Takes as input the whole training dataframe and the whole prediction dataframe
+    and generates a comparison histogramm for the channel and label specified
+
+    
+    
+    """
+    try:
+        ax_train = create_hist_for_channel_and_label(df=train_df,channel=channel,label=label)
+        ax_test = create_hist_for_channel_and_label(df=pred_df,channel=channel,label=label)
+        ax_test.set_title(label)
+        fig = plt.gcf()
+    except:
+        print("Error in compare_train_hist_to_pred_hist")
+        return None
+    return  fig
+
+
+def create_hist_comparison_for_experiment(train_df, pred_df, dir_save):
+
+    channels = train_df.columns[0:12]
+    print(channels)
+    labels = np.unique(train_df["Label"])
+
+
+    
+    for label in labels:
+        path = os.path.join(dir_save,label)
+        os.mkdir(path)
+        print(label)
+        for channel in channels:
+            fig = compare_train_hist_to_pred_hist(train_df=train_df,pred_df=pred_df,label=label,channel=channel)
+            if fig is None:
+                plt.close()
+                continue
+            plt.legend(label=["train","test"])
+            channel_new = channel.replace("/","_",)
+            fname= os.path.join(path,f"{channel_new,label}.png")
+            print(fname)
+            fig.savefig(fname=fname)
+            plt.close()
+        
+
+
+
 
 
 
