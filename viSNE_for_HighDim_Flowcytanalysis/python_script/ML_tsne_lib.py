@@ -225,7 +225,7 @@ def subsample_from_list_of_df(list_of_dataframes, subsampling_number=300, random
 
 
 # %%
-def asinh_transform(subsampling_df, factor=150,min_max_trans = True):
+def asinh_transform(subsampling_df, factor=150,min_max_trans = True, asinh_transform_arg=True):
     """
     Apllies the asinh transformation on each column in one dataframe, also apllies a min max normalization
 
@@ -239,9 +239,10 @@ def asinh_transform(subsampling_df, factor=150,min_max_trans = True):
     transformed_df = subsampling_df.copy()  # Create a copy to store the transformed data
     for col_name in subsampling_df.columns:
         if col_name != 'filename' and pd.api.types.is_numeric_dtype(subsampling_df[col_name]):
-            col = subsampling_df[col_name]
-            transformed_df[col_name] = np.arcsinh(col / factor)
-            
+            if asinh_transform_arg is True:
+                col = subsampling_df[col_name]
+                transformed_df[col_name] = np.arcsinh(col / factor)
+                
         
             # Min-max normalization
             if min_max_trans is True:
@@ -420,7 +421,7 @@ def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2,additional
 
     combined_df_rand= combined_df_trans.sample(frac=frac,random_state=random_state).reset_index(drop=True)
     
-    train_df, test_df = train_test_split(combined_df_rand,test_size=test_size)
+    train_df, test_df = train_test_split(combined_df_rand,test_size=test_size,random_state=random_state)
     X_train = train_df.drop("filename",axis=1)
     y_train = train_df["filename"]
 
@@ -428,7 +429,7 @@ def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2,additional
     y_test = test_df["filename"]
 
 
-    rf_class= RandomForestClassifier(n_estimators=250,max_depth=50,verbose=True,n_jobs= 3,random_state=random_state)
+    rf_class= RandomForestClassifier(n_estimators=250,max_depth=50,verbose=True,random_state=random_state)
 
     rf_class.fit(X_train,y_train)
 
@@ -443,7 +444,7 @@ def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2,additional
     print(f"accuracy:{accuracy:.2f}")
     print("Classification Report:")
     print(report)
-    return rf_class, conf_matrix, combined_df_rand
+    return rf_class, conf_matrix, combined_df_rand, report
 
 
 # %%
@@ -850,7 +851,7 @@ def create_hist_comparison_for_experiment(train_df, pred_df, dir_save):
             if fig is None:
                 plt.close()
                 continue
-            plt.legend(label=["train","test"])
+            plt.legend(labels=["train","test"])
             channel_new = channel.replace("/","_",)
             fname= os.path.join(path,f"{channel_new,label}.png")
             print(fname)
@@ -906,7 +907,7 @@ def export_loaded_fcs_data_col_A_as_filename_csv(fcs_data_list,dir_save):
         dataset.to_csv(os.path.join(dir_save,f"{name}_A_export.csv"),index=False)
     
 def single_fcs_file_to_csv(dir_fcs, dir_save,transform = True):
-
+    
     fcs_file = load_fcs_from_dir(dir_fcs,label_data_frames=True)
     dataset=remove_overflow(fcs_file[0])
     name = np.unique(dataset["filename"])
@@ -1006,3 +1007,20 @@ def add_good_location_identifier(summary_df):
             new_loc_list.append(new_loc)
 
     return new_loc_list
+
+
+def create_meter_from_location(loc_vector=None):
+
+    
+    loc_meter_vec =[]
+    for back in loc_vector:
+        if back == 1:
+            loc_meter_vec.append(-50)
+        elif back ==2:
+            loc_meter_vec.append(50)
+        elif back ==3:
+            loc_meter_vec.append(400)
+
+
+    return loc_meter_vec
+
