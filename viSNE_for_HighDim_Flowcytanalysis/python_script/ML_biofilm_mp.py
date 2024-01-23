@@ -7,9 +7,9 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
 
 
-dir_path_train_data = r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\ML_models\ML_Model_TOTAL_simpel"
-dir_path_test_data = r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\MasterDataFolder\LightDarkPeri\1_raw_data"
-dir_save=r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\MasterDataFolder\LightDarkPeri\ML_result\LighDarkPeri_simpel.xlsx"
+dir_path_train_data = r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\ML_models\ML_microplastic_yn"
+dir_path_test_data = r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\MasterDataFolder\Länder\1_rawdata"
+dir_save=r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\MasterDataFolder\Länder\2_results\Excel\Länder_bifolm_y_n.xlsx"
 
 
 fcs_data = MLtsne.load_data_from_structured_directory(dir_path_train_data)

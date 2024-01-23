@@ -38,7 +38,7 @@ definitions_dict = {
 
     }
 
-def load_data_from_structured_directory(rootdir,data_from_matlab=False):
+def load_data_from_structured_directory(rootdir,data_from_matlab=False,accepted_col_names=None):
     """
     Function to load data out of structured directories where the structure represents the measurements of each instance for which the label shoud be represented
     The label column is going to be determined from the name of the direcory in the root dir. Purpose is to label data according to dir names and prepare it for ML application
@@ -70,7 +70,7 @@ def load_data_from_structured_directory(rootdir,data_from_matlab=False):
                         print(f"loaded {each_dir}")
                     list_of_labeld_df.append(labeld_df)
                 elif files[0].endswith(".fcs"):
-                    labeld_df = load_fcs_from_dir(os.path.join(rootdir,each_dir),data_from_matlab=data_from_matlab)
+                    labeld_df = load_fcs_from_dir(os.path.join(rootdir,each_dir),data_from_matlab=data_from_matlab,accepted_col_names=accepted_col_names)
                     for i, df in enumerate(labeld_df):
                         df['filename'] = each_dir
                         print(f"loaded {each_dir}")
@@ -88,12 +88,27 @@ def load_data_from_structured_directory(rootdir,data_from_matlab=False):
                                 print(f"loaded {each_dir}")
                             list_of_labeld_df.append(labeld_df)
                         elif files[0].endswith(".fcs"):
-                            labeld_df = load_fcs_from_dir(os.path.join(rootdir,each_dir,each_subdir),data_from_matlab=data_from_matlab)
+                            labeld_df = load_fcs_from_dir(os.path.join(rootdir,each_dir,each_subdir),data_from_matlab=data_from_matlab,accepted_col_names=accepted_col_names)
                             for i, df in enumerate(labeld_df):
                                 df['filename'] = each_dir
                                 print(f"loaded {each_dir}")
                             list_of_labeld_df.append(labeld_df)
-        
+        elif os.path.isdir(os.path.join(rootdir,each_dir,files[0])) is False:
+                # check the files inside if csv or fcs ending 
+                files = os.listdir(os.path.join(rootdir,each_dir))
+                                
+                if files[0].endswith(".csv"):
+                    labeld_df = label_data_according_to_definitions(os.path.join(rootdir,each_dir))
+                    for i, df in enumerate(labeld_df):
+                        df['filename'] = each_dir
+                        print(f"loaded {each_dir}")
+                    list_of_labeld_df.append(labeld_df)
+                elif files[0].endswith(".fcs"):
+                    labeld_df = load_fcs_from_dir(os.path.join(rootdir,each_dir),data_from_matlab=data_from_matlab,accepted_col_names=accepted_col_names)
+                    for i, df in enumerate(labeld_df):
+                        df['filename'] = each_dir
+                        print(f"loaded {each_dir}")
+                    list_of_labeld_df.append(labeld_df)
 
     concatenated_list = []
     for sublist in list_of_labeld_df:
@@ -141,7 +156,7 @@ def remove_overflow(fcs_df):
     return df 
 
 # %%
-def load_fcs_from_dir(directory_path,label_data_frames=False,data_from_matlab = False):
+def load_fcs_from_dir(directory_path,label_data_frames=True,data_from_matlab = False,accepted_col_names=None):
     """ 
     Loads in the events in the matrix from the given directory, if the found file shoud be a directory the structured directory method is applied
 
@@ -153,6 +168,9 @@ def load_fcs_from_dir(directory_path,label_data_frames=False,data_from_matlab = 
     Return: 
     - returns list of dataframes of all Area columns in question, no transformation is applied
     """
+    if accepted_col_names is None:
+        print("No accepted colnames given, is mandatory to prevent further errors. Just give colnames as argument.")
+
     fcs_files = []
     # Iterate through files in the directory
     for file in os.listdir(directory_path):
@@ -166,9 +184,11 @@ def load_fcs_from_dir(directory_path,label_data_frames=False,data_from_matlab = 
                     fcs_data_df = fcs_data_df[[col for col in fcs_data_df.columns if col[0].endswith('-A')]]
                 fcs_data_df.columns = fcs_data_df.columns.droplevel(0)
                 
-                if "bh-SNE1" in fcs_data_df.columns:
-                    fcs_data_df=fcs_data_df.drop("bh-SNE2",axis=1)
-                    fcs_data_df=fcs_data_df.drop("bh-SNE1",axis=1)
+                if accepted_col_names is not None:
+                    for name in fcs_data_df.columns:
+                        if name not in accepted_col_names:
+                            fcs_data_df=fcs_data_df.drop(name,axis=1)
+
 
                 if label_data_frames is True:
                     fcs_data_df.loc[:,"filename"] = file
@@ -180,7 +200,6 @@ def load_fcs_from_dir(directory_path,label_data_frames=False,data_from_matlab = 
             print("Structured directory detected, check if loading was correct")
             fcs_data = load_data_from_structured_directory(directory_path,data_from_matlab=data_from_matlab)
             fcs_files.extend(fcs_data)
-            break
 
     return fcs_files
 
@@ -429,7 +448,7 @@ def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2,additional
     y_test = test_df["filename"]
 
 
-    rf_class= RandomForestClassifier(n_estimators=250,max_depth=50,verbose=True,random_state=random_state)
+    rf_class= RandomForestClassifier(n_estimators=250,max_depth=50,verbose=True,random_state=random_state,n_jobs=6)
 
     rf_class.fit(X_train,y_train)
 
@@ -670,7 +689,7 @@ def create_deepL_classifier(X_matrix, y_pred):
     return model
 
 
-def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save,subdir=False,triplicates=False,conf_interval=True):
+def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save,subdir=False,triplicates=False,conf_interval=True,transform = True,data_from_matlab=False,accepted_col_names=None):
 
     """
     Combination function to evaluate a set of data in a directory.
@@ -699,7 +718,7 @@ def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save,subdir=Fals
         
         fcs_data=list_dirs
     elif subdir is False:
-        fcs_data=load_fcs_from_dir(directory_path=dir_evaluate,label_data_frames=True)
+        fcs_data=load_fcs_from_dir(directory_path=dir_evaluate,label_data_frames=True,data_from_matlab=data_from_matlab,accepted_col_names=accepted_col_names)
 
         
     Label_filename_df = pd.DataFrame()
@@ -714,7 +733,10 @@ def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save,subdir=Fals
         num_events=0
         for frame in fcs_data[i:i+k]:
             new_row = pd.DataFrame()
-            transform_frame = asinh_transform(frame,min_max_trans=False)
+            if transform is True:
+                transform_frame = asinh_transform(frame,min_max_trans=False)
+            else:
+                transform_frame= frame
             Labels = classifier.predict(transform_frame.iloc[:,:-1])
             unique_labels, label_count = np.unique(Labels, return_counts=True)   
             for label, count in zip(unique_labels, label_count):
@@ -744,7 +766,8 @@ def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save,subdir=Fals
 
         for each_label,each_mean,each_cf_upper,each_cf_lower in zip(unique_labels,Mean,cf_upper,cf_lower):
             new_row2[each_label]= [None]
-            new_row2[each_label] = ((each_mean*3)/num_events)*100
+            
+            new_row2[each_label] = ((each_mean*k)/num_events)*100
             if conf_interval is True:
                 new_row2[each_label + "cf_0.95_lower"] = ((3*each_cf_lower)/num_events)*100
                 new_row2[each_label + "cf_0.95_upper"] = (3*(each_cf_upper)/num_events)*100
@@ -1023,4 +1046,26 @@ def create_meter_from_location(loc_vector=None):
 
 
     return loc_meter_vec
+
+
+def transform_light_dark_to_numerical(filename_vec,match_dic):
+    categorical_vec = []
+    for element in filename_vec:
+        list_of_strings = element.split("-")
+        concrete_name = list_of_strings[0]
+        for key, value in match_dic.items():
+            if key in concrete_name:
+                categorical_vec.append(value)
+
+    return categorical_vec
+
+
+def save_conf_matrix(conf_matrix,rf_class,dir_save):
+
+    conf_matrix = pd.DataFrame(conf_matrix)
+
+    conf_matrix.columns=rf_class.classes_
+    conf_matrix.set_index(rf_class.classes_,inplace=True)
+    conf_matrix.to_excel(dir_save)
+    return
 

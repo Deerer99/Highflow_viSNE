@@ -5,24 +5,43 @@ import numpy as np
 import seaborn as sns
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
+accepted_col_names = [    'FL1 510/20',
+    "FL10 675",
+    'FL2 542/27',
+    "FL3 575",
+    'FL4 620/30',
+    'FL5 695/30',
+    'FL6 660',
+    'FL7 725/20',
+    'FL8 755',
+    'FL9 460/20',
+    "FS",
+    "SS"]
+
+dir_path_ML_Species = r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\MasterDataFolder\ML_training\V05_olderbutbettermodel\MLsimpelmodelwithpop\Species"
+dir_path_ML_Sediment_MP =r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\MasterDataFolder\ML_training\V05_olderbutbettermodel\MLsimpelmodelwithpop\MP_Sediment"
+dir_path_test_data = r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\MasterDataFolder\ML_training\TestCases"
+dir_save=r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\MasterDataFolder\TestResult\Test_V05.xlsx"
+
+fcs_data_for_ML_label = MLtsne.load_data_from_structured_directory(dir_path_ML_Species,data_from_matlab=True,accepted_col_names=accepted_col_names)
+fcs_data_for_ML_label_MP_Sediment = MLtsne.load_data_from_structured_directory(dir_path_ML_Sediment_MP,accepted_col_names=accepted_col_names)
 
 
-dir_path_train_data = r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\ML_models\ML_Model_TOTAL_simpel"
-dir_path_test_data = r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\MasterDataFolder\LightDarkPeri\1_raw_data"
-dir_save=r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\MasterDataFolder\LightDarkPeri\ML_result\LighDarkPeri_simpel.xlsx"
 
-
-fcs_data = MLtsne.load_data_from_structured_directory(dir_path_train_data)
-    
-
-
-rf_class, conf_matrix, train_df_all, report = MLtsne.develop_ML_model_RF(fcs_data,test_size=0.5,random_state=42,frac=1)
+rf_class, conf_matrix, train_df_all, report = MLtsne.develop_ML_model_RF(fcs_data_for_ML_label_MP_Sediment,test_size=0.5,random_state=42,frac=1,
+                                                                         additional_df_non_transformed=fcs_data_for_ML_label)
 
 # Confusion Matrix
 # disp= ConfusionMatrixDisplay(confusion_matrix=conf_matrix,display_labels=rf_class.classes_)
 # disp.plot()
 
-summary_df,pred_df_list= MLtsne.evaluate_dir_with_ML_classifier(dir_evaluate=dir_path_test_data,classifier=rf_class,dir_save=dir_save,subdir=False,triplicates=True,conf_interval=True)
+summary_df,pred_df_list= MLtsne.evaluate_dir_with_ML_classifier(dir_evaluate=dir_path_test_data,classifier=rf_class,dir_save=dir_save,subdir=False,triplicates=False,
+                                                                conf_interval=False,transform=False,data_from_matlab=True,accepted_col_names=accepted_col_names)
+
+
+
+
+
 
 pred_df_all = MLtsne.asinh_transform(pd.concat(pred_df_list),min_max_trans=False)
 pure =pred_df_all.drop("filename",axis=1)
