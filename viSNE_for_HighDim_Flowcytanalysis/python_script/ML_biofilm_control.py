@@ -5,24 +5,29 @@ import numpy as np
 import seaborn as sns
 
 
-
-dir_path_ML_Species = r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\ML_models\MLsimpelmodelwithpop\Species"
-dir_path_ML_Sediment_MP =r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\ML_models\MLsimpelmodelwithpop\MP_Sediment"
-dir_path_test_data = r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\MasterDataFolder\biofilm_control_nosed_nomp\raw_data\20240116_biofilmcontrol"
-dir_save=r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\ML_eval\iLinktest_PopSep_popsep.xlsx"
-
-
-fcs_data_for_ML_label = MLtsne.load_fcs_from_dir(dir_path_ML_Species,label_data_frames=True,data_from_matlab=True)
-fcs_data_for_ML_label_MP_Sediment = MLtsne.load_data_from_structured_directory(dir_path_ML_Sediment_MP)
+path= r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\ML_models\ML_Model_simpel_fcs"
+dir_path_test_data = r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\MasterDataFolder\Länder\1_rawdata"
+dir_save=r"c:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\MasterDataFolder\Länder\2_results\Excel\Länder_V07_width_height.xlsx"
 
 
 
-rf_class, conf_matrix, train_df_all, report = MLtsne.develop_ML_model_RF(fcs_data_for_ML_label_MP_Sediment,test_size=0.5,random_state=42,additional_df_non_transformed=fcs_data_for_ML_label,frac=1)
+fcs_data_for_ML_label_MP_Sediment = MLtsne.load_data_from_structured_directory(path,data_from_matlab=True)
 
 
 
+rf_class, conf_matrix, train_df_all, report = MLtsne.develop_ML_model_RF(fcs_data_for_ML_label_MP_Sediment,test_size=0.5,random_state=42,frac=0.2)
 
-summary_df,pred_df_list= MLtsne.evaluate_dir_with_ML_classifier(dir_evaluate=dir_path_test_data,classifier=rf_class,dir_save=dir_save,subdir=False,triplicates=True,conf_interval=True)
+
+
+summary_df,pred_df_list= MLtsne.evaluate_dir_with_ML_classifier(
+    dir_evaluate=dir_path_test_data,
+    classifier=rf_class,
+    dir_save=dir_save,
+    subdir=False,
+    triplicates=True,
+    conf_interval=True,
+    data_from_matlab=True
+)
 
 
 

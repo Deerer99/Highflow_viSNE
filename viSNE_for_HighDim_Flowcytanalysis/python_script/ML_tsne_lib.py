@@ -22,37 +22,41 @@ from sklearn.metrics import confusion_matrix,ConfusionMatrixDisplay
 from sklearn.manifold import TSNE
 import matplotlib
 import matplotlib.patches as mpatches
-# %%
-# import data for viSNE
-csv_path = r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\SingleSpeciesData"
-definitions_dict = {
-        "3B": 1,
-        "3D": 2,
-        "3G": 3,
-        "A26": 4,
-        "MP": 5,
-        "CK":6,
-        "CM":7,
-        "FeOx":8,
-        "Q12":9
+import seaborn as sns
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
-    }
 
-def load_data_from_structured_directory(rootdir,data_from_matlab=False,accepted_col_names=None):
+def load_data_from_structured_directory(
+        
+    rootdir:str,
+    data_from_matlab:bool=False,
+    accepted_col_names:list=None
+
+)   ->list:
     """
-    Function to load data out of structured directories where the structure represents the measurements of each instance for which the label shoud be represented
-    The label column is going to be determined from the name of the direcory in the root dir. Purpose is to label data according to dir names and prepare it for ML application
+    Function to load data out of structured directories were the 
+    structure represents the measurements of each instance for which 
+    the label shoud be represented
+    The label column is going to be determined from 
+    the name of the direcory in the root dir. 
+    Purpose is to label data according to dir names and 
+    prepare it for ML application
 
     Parameters:
     - rootdir: dir in which the structured data resides
+    - data_from_matlab: if the data was imported from matlab, wont get transformed again
+    - accepted_col_names: list of accepted col names
 
     returns:
-    - concatenated_list: each instance in each dir is contatenated and put into a overarching list which represents each directory
+    - concatenated_list: each instance in each dir is contatenated and put into a 
+                         overarching list which represents each directory
     
     
     
     
     """
+    # this code needs to be remodeled sometime, not good 
 
     list_of_labeld_df = []
     # loop through the direcotry
@@ -118,7 +122,13 @@ def load_data_from_structured_directory(rootdir,data_from_matlab=False,accepted_
     return concatenated_list
 
 
-def label_data_according_to_definitions(csv_path,definitions_dict= None):
+def label_data_according_to_definitions(
+        
+        csv_path:str,
+        definitions_dict:dict= None
+
+)       ->pd.DataFrame:
+    
     """
     Function creates matrix and labels them according to filename naming.
     If no definitions dict is given then the whole filename is used to name the events
@@ -128,19 +138,18 @@ def label_data_according_to_definitions(csv_path,definitions_dict= None):
     
     return: returns a labeld data set from all the csv files in the dictionary
     """
-    labeled_dfs = []
-    
 
+    labeled_dfs = []
     for filename in os.listdir(csv_path):
         file_path = os.path.join(csv_path, filename)
-        if filename.endswith(".csv"):  # Check if the file is a CSV file
+        if filename.endswith(".csv"):
             df = pd.read_csv(file_path)
             if definitions_dict is not None:
                 for key, label in definitions_dict.items():
                     if key in filename:
-                        df['filename'] = label  # Add a new column 'Label' with the corresponding label
+                        df['filename'] = label 
                         labeled_dfs.append(df)
-                        break  # No need to check other keys once a match is found
+                        break 
             elif definitions_dict is None:
                 df['filename']= filename
                 labeled_dfs.append(df)
@@ -148,15 +157,31 @@ def label_data_according_to_definitions(csv_path,definitions_dict= None):
 
     return labeled_dfs
 
-def remove_overflow(fcs_df):
+def remove_overflow(fcs_df:pd.DataFrame)->pd.DataFrame:
 
+    """
+    removes overflow (max) values in each column of a dataframe 
+    this needs to be done to ensure no wrong values are assesed later
+    
+    Parameters:
+    - fcs_df: flowcytometry dataframe 
+
+    returns:
+    - df: cleaned dataframe
+    
+    """
     value_to_remove = 1048575.0
     mask = ~fcs_df.isin([value_to_remove]).any(axis=1)
     df= fcs_df[mask]
     return df 
 
 # %%
-def load_fcs_from_dir(directory_path,label_data_frames=True,data_from_matlab = False,accepted_col_names=None):
+def load_fcs_from_dir(
+        directory_path,
+        label_data_frames=True,
+        data_from_matlab = False,
+        accepted_col_names=None
+)       ->list:
     """ 
     Loads in the events in the matrix from the given directory, if the found file shoud be a directory the structured directory method is applied
 
@@ -187,7 +212,10 @@ def load_fcs_from_dir(directory_path,label_data_frames=True,data_from_matlab = F
                 if accepted_col_names is not None:
                     for name in fcs_data_df.columns:
                         if name not in accepted_col_names:
-                            fcs_data_df=fcs_data_df.drop(name,axis=1)
+                            try:
+                                fcs_data_df=fcs_data_df.drop(name,axis=1)
+                            except:
+                                continue
 
 
                 if label_data_frames is True:
@@ -198,7 +226,7 @@ def load_fcs_from_dir(directory_path,label_data_frames=True,data_from_matlab = F
 
         elif os.path.isdir(file_path) is True:
             print("Structured directory detected, check if loading was correct")
-            fcs_data = load_data_from_structured_directory(directory_path,data_from_matlab=data_from_matlab)
+            fcs_data = load_data_from_structured_directory(directory_path,data_from_matlab=data_from_matlab,accepted_col_names=accepted_col_names)
             fcs_files.extend(fcs_data)
 
     return fcs_files
@@ -423,13 +451,15 @@ def develop_ML_model_RF(labeld_dfs, random_state = 42, test_size= 0.2,additional
     
     
     """
-
-    combined_df = pd.concat(labeld_dfs,ignore_index=True)
-    
-    if asinh_transformation is True:
-        combined_df_trans = asinh_transform(combined_df,min_max_trans=False)
+    if labeld_dfs is not None:
+        combined_df = pd.concat(labeld_dfs,ignore_index=True)
+        
+        if asinh_transformation is True:
+            combined_df_trans = asinh_transform(combined_df,min_max_trans=False)
+        else:
+            combined_df_trans=combined_df
     else:
-        combined_df_trans=combined_df
+        combined_df_trans=pd.DataFrame()
 
     if additional_df_non_transformed is not None:
         if type(additional_df_non_transformed) is list:
@@ -560,38 +590,62 @@ column_mapping = {
 
 # %%
 
-def create_stacked_barplot_from_ML(df, triplicates=True):
-   
-    filenames = list(np.concatenate(list(df['filename'])))
-    unique_labels = df['unique_labels'][1]
-    label_count = list(df['label_count'])
-    colors = plt.cm.Paired(range(len(unique_labels[0])))
-    # x positions
-    fig,ax = plt.subplots()
-    percentage_label_count = [[count_i / sum(count) * 100 for count_i in count] for count in label_count]
-    bottom = np.zeros(len(filenames))
+def create_stacked_barplot_from_ML(input_df, cols_to_plot=[]):
+    """
+    df: put in the contatenated list of all events with filename and Labels
     
-    for i,label in enumerate(unique_labels):
     
-        position_i_values = [inner_list[i] for inner_list in percentage_label_count]
-        print(position_i_values)
-        ax.bar(filenames, position_i_values, color=colors[i],bottom=bottom,label=label)
-        bottom = [sum(x) for x in zip(bottom, position_i_values)]
+    """
+    df= input_df.copy()
+    if df is list:
+        print("Input contatenated dataframe, not list")
+        return 
+    if "filename" not in df.columns:
+        print("Either filename or Label not in columns. Check if cols got assigned correctly or right dataframe got used")
+        print(f"cols present:{df.columns}")
+        return
+    if any("cf_0.95" in col for col in df.columns):
+        df = remove_cf_interval_from_df(df)
+        print("confidence interval removed")
+
+    df.drop("event_count", inplace=True,axis=1)
+    filename_vec= [name.split("-")[0] for name in df["filename"]]
+    print(df.columns)
+    df = df[cols_to_plot]
+    ax = df.plot(kind="bar",stacked=True)
 
 
 
-
-    ax.set_xlabel('Filename')
-    ax.set_ylabel('Percentage of Unique Label Occurrences')
-    ax.set_title('Stacked Barplot of Label Occurrences')
-    ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
-
-
+    ax.set_xticks(range(len(filename_vec)))
+    ax.set_xticklabels(filename_vec)
+    ax.set_ylabel('Percent of classified events')
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.4),ncol=len(df.columns)//2)
+    
     plt.xticks(rotation=45, ha='right')
-        
-    plt.show()
 
 
+def stacked_barplot_for_certain_rows(df,identifer=[],cols_to_plot=[],fig_save=None):
+    if identifer is not None:
+        for each_identifier in identifer:
+            subset_df = df[df["filename"].str.contains(each_identifier)]
+            create_stacked_barplot_from_ML(input_df=subset_df,cols_to_plot=cols_to_plot)
+            plt.tight_layout()
+            plt.subplots_adjust(bottom=0.4, right=0.8)
+            if fig_save is not None:
+                plt.savefig(fig_save)
+            plt.show()
+            plt.close()
+    else:
+        create_stacked_barplot_from_ML(input_df=df,cols_to_plot=cols_to_plot)
+        plt.tight_layout()
+        plt.xticks(fontsize=8)
+        plt.subplots_adjust(bottom=0.4, right=0.8)
+        if fig_save is not None:
+            plt.savefig(fig_save, bbox_inches='tight', pad_inches=0.1)
+        plt.show()
+        plt.close()
+
+    return
 
 
 # %%
@@ -713,7 +767,7 @@ def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save,subdir=Fals
         list_dirs = []
         for each_dir in dirs:
             each_dir_path = os.path.join(dir_evaluate,each_dir)
-            fcs_data=load_fcs_from_dir(each_dir_path,label_data_frames=True)
+            fcs_data=load_fcs_from_dir(each_dir_path,label_data_frames=True,data_from_matlab=data_from_matlab)
             list_dirs.extend(fcs_data)
         
         fcs_data=list_dirs
@@ -764,7 +818,7 @@ def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save,subdir=Fals
         new_row2["filename"]=filename
         new_row2["event_count"] = num_events
 
-        for each_label,each_mean,each_cf_upper,each_cf_lower in zip(unique_labels,Mean,cf_upper,cf_lower):
+        for each_label,each_mean,each_cf_upper,each_cf_lower in zip(calculating_df.columns,Mean,cf_upper,cf_lower):
             new_row2[each_label]= [None]
             
             new_row2[each_label] = ((each_mean*k)/num_events)*100
@@ -811,7 +865,7 @@ def create_hist_for_channel_and_label(channel=None,label=None,df=None):
 
     """
     Creates a histogramm for the passed dataframe label and channel
-
+    
 
     """
     # if channel or label or df is None:
@@ -824,7 +878,10 @@ def create_hist_for_channel_and_label(channel=None,label=None,df=None):
         return
 
     try:
-        df_label= df[df['Label'] == label]
+        if label is not None:
+            df_label= df[df['Label'] == label]
+        else:
+            df_label=df
         channel_label_df = df_label[channel]
         if len(channel_label_df)==0:
             return
@@ -914,18 +971,21 @@ def analyze_corr_for_condition(df,):
 
 
 # %%
-def export_loaded_fcs_data_col_A_as_filename_csv(fcs_data_list,dir_save):
+def export_loaded_fcs_data_col_A_as_filename_csv(fcs_data_list,dir_save,triplicates=True):
 
     concat_list = []
-    for i in range(0,len(fcs_data_list),3):
-        new = pd.concat(fcs_data_list[i:i+3])
-        print(len(new))
-        concat_list.append(new)
-
+    if triplicates is True:
+        for i in range(0,len(fcs_data_list),3):
+            new = pd.concat(fcs_data_list[i:i+3])
+            print(len(new))
+            concat_list.append(new)
+    else:
+        concat_list=fcs_data_list
     
     for dataset in concat_list:
         dataset=remove_overflow(dataset)
-        name = np.unique(dataset["filename"])
+        dataset.reset_index(inplace=True,drop=True)
+        name =dataset["filename"][0]
         dataset=dataset.drop("filename",axis=1)
         dataset.to_csv(os.path.join(dir_save,f"{name}_A_export.csv"),index=False)
     
@@ -962,7 +1022,7 @@ def import_data_from_Matlab(path_to_dir):
     return fcs_data_df
         
     
-def create_tsne_for_species_percent(summary_df,plot=True):
+def create_tsne_for_species_percent(summary_df,plot=True,names=[],label_plot=True):
 
 
     """ 
@@ -972,36 +1032,43 @@ def create_tsne_for_species_percent(summary_df,plot=True):
     Pretty undynamic coding in here so only use with caution
     
     """
-    names = ["DW1","DW2","UP"]
     if "location_label" not in summary_df.columns:
         summary_df.insert(1,"location_label",0)
 
 
     for index,row in summary_df.iterrows():
-        if names[0] in row["filename"]:
-            summary_df["location_label"][index]= 1
-        elif names[1] in row["filename"]:
-            summary_df["location_label"][index]= 2
-        elif names[2] in row["filename"]:
-            summary_df["location_label"][index] = 3
+        for i,name in enumerate(names):
+            if name in row["filename"]:
+                summary_df["location_label"][index]= name
+ 
+    
+    summ_df_wo_confinterval= remove_cf_interval_from_df(summary_df)
+    text_labels=[s.split("_")[0] for s in summ_df_wo_confinterval["filename"]]
 
-    red_patch = mpatches.Patch(color='red', label='DW1')
-    blue_patch =mpatches.Patch(color='blue', label='DW2')
-    green_patch = mpatches.Patch(color='green', label='UP')
-
-
-
-    clean_df = summary_df.loc[:, ~summary_df.columns.isin(["filename", "event_count","location_label"])]
+    clean_df = summ_df_wo_confinterval.loc[:, ~summary_df.columns.isin(["filename", "event_count","location_label"])]
     tsne_cords =TSNE(n_components=2, learning_rate='auto', perplexity=4).fit_transform(X=clean_df)
     location_label = summary_df["location_label"]
-    colors = ["red","green","blue"]
-    if plot is True:
-        plt.scatter(tsne_cords[:,0],tsne_cords[:,1],c=location_label, cmap=matplotlib.colors.ListedColormap(colors))
-        plt.legend(handles=[red_patch,blue_patch,green_patch])
-        for each_cords,name in zip(tsne_cords,summary_df["filename"]):
-            plt.text(each_cords[0],each_cords[1],name[0:2],rotation=30,fontsize=7)
+    cmap = plt.get_cmap("viridis")
+    colors = [cmap(i/len(names)) for i in range(len(names))]
+    c=[]
+    for i,name in enumerate(names):
+    
+        for each_label in location_label:
+            if each_label is name:
+                c.append(colors[i])
 
+    if plot is True:    
+        plt.scatter(tsne_cords[:,0],tsne_cords[:,1],label=names,c=c)
+    
+    if label_plot is True:
+        for i, label in enumerate(text_labels):
+            plt.annotate(label, (tsne_cords[i,0], tsne_cords[i,1]), textcoords="offset points", xytext=(0, 5), ha='center')
 
+    legend_labels = {n: color for n,color in zip(names,colors)}
+    handels = [plt.Line2D([0],[0],marker="o",color="w",markerfacecolor=color,markersize=10) for color in colors]
+    plt.legend(handels,legend_labels.keys(),title="Location", bbox_to_anchor=(1.05,1),loc="upper left")
+
+    plt.tight_layout()
 
     plt.show()  
     return 
@@ -1033,7 +1100,9 @@ def add_good_location_identifier(summary_df):
 
 
 def create_meter_from_location(loc_vector=None):
-
+    """
+    Adds predetimined meter from WWTP to specific location indices
+    """
     
     loc_meter_vec =[]
     for back in loc_vector:
@@ -1049,6 +1118,12 @@ def create_meter_from_location(loc_vector=None):
 
 
 def transform_light_dark_to_numerical(filename_vec,match_dic):
+
+    """
+    Creates and matches filenames to specific values defined in the match_dic and gives back a 
+    vector numerical which represents categorical values 
+    
+    """
     categorical_vec = []
     for element in filename_vec:
         list_of_strings = element.split("-")
@@ -1061,11 +1136,83 @@ def transform_light_dark_to_numerical(filename_vec,match_dic):
 
 
 def save_conf_matrix(conf_matrix,rf_class,dir_save):
+    """
+    Saves the confusion matrix of a classifier in a given directory
 
+    conf_matrix: confusion matrix
+    rf_class: ML classifier with the .classes_ attribute to name cols and rows
+    dir_save: path to a directory which is empty
+    
+    """
     conf_matrix = pd.DataFrame(conf_matrix)
 
     conf_matrix.columns=rf_class.classes_
     conf_matrix.set_index(rf_class.classes_,inplace=True)
     conf_matrix.to_excel(dir_save)
     return
+
+
+
+def create_correl_heatmap_for_WWTP_dataset(
+        
+        summary_df:pd.DataFrame,
+        excel_path:str=None
+
+)       ->tuple[pd.DataFrame,pd.Series]:
+    
+
+    summary_df_loc= add_location(summary_df)
+    loc = add_good_location_identifier(summary_df=summary_df)
+    summary_df["location_total"]= loc
+    loc_meter = create_meter_from_location(loc_vector=summary_df_loc["location"])
+    summary_df["location from WWTP"] = loc_meter
+    summary_df.reset_index(inplace=True, drop=True)
+    clean_df = summary_df.loc[:,summary_df.columns.isin(["location_total","location from WWTP","Cyanobacteria","Diatom","MP","Sediment","Grünalge"])]
+    clean_df_sorted = clean_df.sort_values("location_total")
+    clean_df_sorted.reset_index(inplace=True,drop=True)
+
+
+    water_df = pd.read_excel(excel_path,index_col=0,header=None)
+    water_df.columns=water_df.iloc[1,:]
+    water_df.reset_index(inplace=True,drop=True)
+    water_df= water_df.iloc[2:,:]
+
+    water_df_clean = water_df.loc[:, water_df.columns.isin(["DO","Temp","pH","Discharge","EC","O2sat","DONestimated","CH4","CO2","N2O"])]
+    water_df_clean.reset_index(drop=True,inplace=True)
+    water_df_clean = water_df_clean.iloc[0:40]
+    water_df_clean.drop(index=28,inplace=True)
+    water_df_clean.reset_index(inplace=True,drop=True)
+    water_df_clean= water_df_clean.astype(float)
+
+
+    location = clean_df_sorted["location_total"]
+    clean_df_sorted.drop("location_total",inplace=True,axis=1)
+    concat_df = pd.concat([clean_df_sorted,water_df_clean],axis=1)
+
+
+    corr_matrix =concat_df.corr()
+    corr_matrix_rounded = corr_matrix.round(2)
+    sns.heatmap(corr_matrix_rounded, cmap="Blues", annot=True,annot_kws={"size": 8})
+
+    return concat_df,location
+
+def remove_cf_interval_from_df(df):
+
+    df.drop(columns=[col for col in df.columns if "cf_0.95" in col],inplace=True)
+    return df
+
+
+def preform_pca_on_dataframe(
+        
+        dataframe: pd.DataFrame
+
+)       ->pd.DataFrame:
+
+    scaler = StandardScaler()
+    X_scaled=scaler.fit_transform(dataframe)
+    pca= PCA(n_components=5)
+    X_pca= pca.fit_transform(X_scaled)
+    df_pca=pd.DataFrame(X_pca)
+    return df_pca,pca
+
 
