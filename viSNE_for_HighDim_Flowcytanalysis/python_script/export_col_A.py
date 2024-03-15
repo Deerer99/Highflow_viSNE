@@ -16,10 +16,10 @@ accepted_col_names = [    'FL1 510/20',
     'FL9 460/20',
     "FS",
     "SS"]
-path = r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\MasterDataFolder\2_ML_training\3_validation\4_eval_mp_nilered\1_rawdata\20230131_nilered"
-dir_save = r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\MasterDataFolder\2_ML_training\3_validation\4_eval_mp_nilered\1_rawdata\20230131_nilered_excel"
-fcs_data = ML.load_fcs_from_dir(path,accepted_col_names=accepted_col_names,data_from_matlab=False)
+path = r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\MasterDataFolder\1_datasets\Sgier\Sgier_field_saples"
+dir_save = r"C:\Users\bruno\OneDrive\Desktop\Programmer\viSNE_maps_and_data\Data\MasterDataFolder\1_datasets\Sgier\Sgier_field_samples_excel"
+fcs_data = ML.load_fcs_from_dir(path,accepted_col_names=None,data_from_matlab=False)
 
-fcs_data = ML.export_loaded_fcs_data_col_A_as_filename_csv(fcs_data_list=fcs_data,dir_save=dir_save,triplicates=True)
+fcs_data = ML.export_loaded_fcs_data_col_A_as_filename_csv(fcs_data_list=fcs_data,dir_save=dir_save,triplicates=False)
 
 
