@@ -18,9 +18,12 @@ fcs_data = MLtsne.load_data_from_structured_directory(dir_path_train_data)
 
 rf_class, conf_matrix, train_df_all, report = MLtsne.develop_ML_model_RF(fcs_data,test_size=0.5,random_state=42,frac=1)
 
-# Confusion Matrix
-# disp= ConfusionMatrixDisplay(confusion_matrix=conf_matrix,display_labels=rf_class.classes_)
-# disp.plot()
+#Confusion Matrix
+disp= ConfusionMatrixDisplay(confusion_matrix=conf_matrix,display_labels=rf_class.classes_)
+disp.plot(xticks_rotation=45)
+
+
+
 
 summary_df,pred_df_list= MLtsne.evaluate_dir_with_ML_classifier(dir_evaluate=dir_path_test_data,classifier=rf_class,dir_save=dir_save,subdir=False,triplicates=True,conf_interval=True)
 

@@ -743,14 +743,23 @@ def create_deepL_classifier(X_matrix, y_pred):
     return model
 
 
-def evaluate_dir_with_ML_classifier(dir_evaluate,classifier,dir_save,subdir=False,triplicates=False,conf_interval=True,transform = True,data_from_matlab=False,accepted_col_names=None):
+def evaluate_dir_with_ML_classifier(
+        dir_evaluate:str,
+        classifier,
+        dir_save:str,
+        subdir:bool=False,
+        triplicates:bool=False,
+        conf_interval:bool=True,
+        transform:bool = True,
+        data_from_matlab:bool=False,
+        accepted_col_names=None):
 
     """
     Combination function to evaluate a set of data in a directory.
 
     Parameters:
-    - 
-
+    - dir evaluate : directory which is evaluated,
+    
 
 
     Returns:

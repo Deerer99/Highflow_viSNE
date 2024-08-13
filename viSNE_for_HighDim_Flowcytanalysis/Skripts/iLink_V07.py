@@ -1,5 +1,5 @@
 
-import ML_tsne_lib as MLtsne
+from ML_tsne_lib_p import ML_tsne_lib
 import pandas as pd
 from sklearn.manifold import TSNE
 from sklearn.metrics import ConfusionMatrixDisplay
