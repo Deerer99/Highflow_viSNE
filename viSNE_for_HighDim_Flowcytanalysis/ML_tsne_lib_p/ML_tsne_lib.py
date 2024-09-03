@@ -11,20 +11,86 @@ rd.seed(100)
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 import ipywidgets as widgets
+
 from matplotlib.cm import get_cmap
 import flowkit as fk
 from scipy.stats import t
 import matplotlib.colors as mcolors
-import hdbscan
-from keras import Sequential
-from keras.layers import Dense
 from sklearn.metrics import confusion_matrix,ConfusionMatrixDisplay
 from sklearn.manifold import TSNE
 import matplotlib
 import matplotlib.patches as mpatches
-import seaborn as sns
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+from collections import defaultdict
+
+
+
+
+def load_fcs_file(path:str=None,as_dataframe:bool=False)->fk._models:
+    """
+    loads fcs file from given string path
+
+    args:
+        path: path to fcs file
+        as_dataframe: if transformation to dataframe is done
+
+    returns:
+        fcs_data: either in sample form from flowkit or as dataframe
+
+    """
+
+    try: 
+        fcs_data = fk.Sample(path,cache_original_events=True,ignore_offset_error=True)
+        print(f"loading of {path} succesful")
+    except Exception as e:
+        print(f"Error: {e}")
+    
+    return fcs_data
+
+def load_fcs_files_from_dir(path:str=None)->list:
+
+    """
+    Loads multiple fcs files from a directory. The structure is assumed to be the export structure of the 
+    BPT Flowcytometer --> All measurements and subgates arein one folder with the listmode parameters as only
+    FCS file per measurement. With argument to specifiy the gate names and automatically sorting each subgate from 
+    the cytoclus software to the respective measurement.
+    """
+
+    if path is None:
+        print("no dir path given")
+    
+
+    list_of_fcs_files= []
+    for i,each_file in enumerate(os.listdir(path)):
+        if each_file.lower().endswith('.fcs'):
+            print(each_file)
+            fcs_file=load_fcs_file(path=os.path.join(path,each_file))
+            list_of_fcs_files.append(fcs_file)
+
+    print("FCS files loaded but not sorted")
+    return list_of_fcs_files
+
+
+def get_root_filename(filename: fk._models) -> str:
+    # Extract the portion of the filename up to the timestamp
+    # Assuming that the timestamp starts after the pattern ' 20' (e.g., ' 2024-08-13')
+    filename = filename.id
+    root = filename.split(' 2024')[0]
+    return root
+def sort_fcs_files_to_subsets(file_list: list) -> dict:
+    sorted_files = defaultdict(list)
+    sample_names=[]
+    for element in file_list:
+        # Get the root filename
+        root_filename= get_root_filename(element)
+        # Associate the entries in the list to each root_filename
+        sorted_files[root_filename].append(element)
+        sample_names.append(root_filename)
+    
+    return dict(sorted_files),np.unique(sample_names)
+
+
 
 
 def load_data_from_structured_directory(
@@ -272,7 +338,7 @@ def subsample_from_list_of_df(list_of_dataframes, subsampling_number=300, random
 
 
 # %%
-def asinh_transform(subsampling_df, factor=150,min_max_trans = True, asinh_transform_arg=True):
+def asinh_transform(subsampling_df, factor=150,min_max_trans = True, col_names_to_transform=None):
     """
     Apllies the asinh transformation on each column in one dataframe, also apllies a min max normalization
 
@@ -285,17 +351,15 @@ def asinh_transform(subsampling_df, factor=150,min_max_trans = True, asinh_trans
     """
     transformed_df = subsampling_df.copy()  # Create a copy to store the transformed data
     for col_name in subsampling_df.columns:
-        if col_name != 'filename' and pd.api.types.is_numeric_dtype(subsampling_df[col_name]):
-            if asinh_transform_arg is True:
+        if col_name in col_names_to_transform and pd.api.types.is_numeric_dtype(subsampling_df[col_name]):
                 col = subsampling_df[col_name]
                 transformed_df[col_name] = np.arcsinh(col / factor)
-                
-        
-            # Min-max normalization
-            if min_max_trans is True:
-                col_min = transformed_df[col_name].min()
-                col_max = transformed_df[col_name].max()
-                transformed_df[col_name] = (transformed_df[col_name] - col_min) / (col_max - col_min)
+
+                # Min-max normalization
+                if min_max_trans is True:
+                    col_min = transformed_df[col_name].min()
+                    col_max = transformed_df[col_name].max()
+                    transformed_df[col_name] = (transformed_df[col_name] - col_min) / (col_max - col_min)
 
     return transformed_df
 
